@@ -15,7 +15,6 @@
 - **Security Codes**: Protect your shares with a PIN/Access Code.
 - **Download Limits**: Automatically shut down the server after $N$ downloads.
 - **Auto-Expiry**: Set a time limit for how long the files are available.
-- **Real-time SaaS Dashboard**: The recipient sees a live countdown and download tracker.
 
 ---
 
