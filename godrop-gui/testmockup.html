@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Godrop - Retro Explorer</title>
+    <style>
+        :root {
+            /* Solarized Light Theme */
+            --bg-base: #fdf6e3;
+            --bg-panel: #eee8d5;
+            --bg-white: #ffffff;
+            --text-main: #657b83;
+            --text-heading: #586e75;
+            --accent: #2aa198;
+            /* Cyan */
+            --accent-hover: #238981;
+            --orange: #cb4b16;
+            --border: #93a1a1;
+            --selection: #d3ebfa;
+            --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: 'Fira Code', 'Courier New', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-ui);
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* --- LAYOUT --- */
+        #app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            transition: filter 0.3s;
+        }
+
+        /* LEFT SIDEBAR */
+        .sidebar {
+            width: 220px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .brand {
+            font-family: var(--font-mono);
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--orange);
+            margin-bottom: 40px;
+            letter-spacing: -1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-item {
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text-heading);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .nav-item.active {
+            background: #dfd8c2;
+            color: var(--text-main);
+            font-weight: bold;
+        }
+
+        /* CENTER EXPLORER */
+        .explorer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-white);
+        }
+
+        .address-bar {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            background: var(--bg-panel);
+        }
+
+        .path-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            color: var(--text-heading);
+            background: var(--bg-white);
+        }
+
+        .file-grid {
+            flex: 1;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            grid-auto-rows: 130px;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.1s;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .file-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .file-item.selected {
+            background-color: var(--selection);
+            border-color: #a4d4f7;
+        }
+
+        .file-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .file-name {
+            font-size: 0.85rem;
+            word-break: break-word;
+            line-height: 1.3;
+        }
+
+        /* RIGHT CONFIG PANEL */
+        .config-panel {
+            width: 320px;
+            background: var(--bg-base);
+            border-left: 1px solid var(--border);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            color: var(--text-heading);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 5px;
+        }
+
+        .selection-list {
+            flex: 1;
+            border: 1px dashed var(--border);
+            background: rgba(255, 255, 255, 0.5);
+            margin-bottom: 20px;
+            padding: 10px;
+            overflow-y: auto;
+            border-radius: 4px;
+        }
+
+        .selected-tag {
+            background: white;
+            padding: 8px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .btn-start {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 0 #1d746d;
+            /* Retro button feel */
+        }
+
+        .btn-start:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* --- SERVER MODAL OVERLAY --- */
+        #server-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .server-card {
+            background: var(--bg-base);
+            width: 600px;
+            height: 450px;
+            border-radius: 8px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--text-main);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: var(--text-main);
+            color: var(--bg-base);
+            padding: 15px;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .card-body {
+            flex: 1;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .qr-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px dashed var(--border);
+            padding-right: 20px;
+        }
+
+        .log-section {
+            flex: 1;
+            background: #002b36;
+            /* Solarized Dark for terminal */
+            color: #839496;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .url-box {
+            font-family: var(--font-mono);
+            background: var(--bg-white);
+            padding: 8px;
+            border: 1px solid var(--border);
+            margin-top: 15px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .btn-stop {
+            margin: 20px;
+            padding: 10px;
+            background: var(--orange);
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- MAIN APP INTERFACE -->
+    <div id="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">⚡ GODROP</div>
+            <div class="nav-item active" onclick="loadPath('root')">💻 My PC</div>
+            <div class="nav-item" onclick="loadPath('Downloads')">⬇️ Downloads</div>
+            <div class="nav-item" onclick="loadPath('Documents')">📄 Documents</div>
+            <div class="nav-item" onclick="loadPath('Pictures')">🖼️ Pictures</div>
+        </aside>
+
+        <!-- Explorer -->
+        <main class="explorer">
+            <div class="address-bar">
+                <button onclick="goUp()">⬆</button>
+                <input type="text" id="path-display" class="path-input" value="My PC/" readonly>
+            </div>
+            <div class="file-grid" id="file-grid">
+                <!-- Javascript will inject files here -->
+            </div>
+        </main>
+
+        <!-- Config Panel -->
+        <aside class="config-panel">
+            <div class="panel-title">Preparation</div>
+
+            <label class="form-label">Selected Files</label>
+            <div class="selection-list" id="selection-list">
+                <div style="text-align:center; color:#999; font-size:0.8rem; margin-top:20px;">
+                    Select files from the grid
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password (Optional)</label>
+                <input type="password" class="form-input" placeholder="••••••">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Port</label>
+                <input type="number" class="form-input" value="8080">
+            </div>
+
+            <button class="btn-start" onclick="startServer()">START SERVER 🚀</button>
+        </aside>
+    </div>
+
+    <!-- LIVE SERVER OVERLAY (Hidden by default) -->
+    <div id="server-overlay">
+        <div class="server-card">
+            <div class="card-header">
+                <span>GODROP SERVER RUNNING</span>
+                <span>● LIVE</span>
+            </div>
+            <div class="card-body">
+                <div class="qr-section">
+                    <!-- Fake QR Code API for Demo -->
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=http://192.168.1.5:8080"
+                        alt="QR">
+                    <div class="url-box">http://192.168.1.5:8080</div>
+                    <div style="font-size:0.7rem; margin-top:5px; color:#999;">Scan to Download</div>
+                </div>
+                <div class="log-section" id="terminal-logs">
+                    <div>> Initializing http server...</div>
+                    <div>> Listening on :8080</div>
+                    <div>> Firewall punched successfully.</div>
+                    <div>> Waiting for peers...</div>
+                </div>
+            </div>
+            <button class="btn-stop" onclick="stopServer()">STOP SERVER</button>
+        </div>
+    </div>
+
+    <!-- LOGIC -->
+    <script>
+        // --- 1. MOCK DATA ---
+        const fileSystem = {
+            'root': [
+                { name: 'Downloads', type: 'folder' },
+                { name: 'Documents', type: 'folder' },
+                { name: 'Pictures', type: 'folder' },
+                { name: 'Music', type: 'folder' },
+                { name: 'resume.pdf', type: 'file' },
+            ],
+            'Downloads': [
+                { name: 'installer.exe', type: 'file' },
+                { name: 'archive.zip', type: 'file' },
+            ],
+            'Documents': [
+                { name: 'Project_Alpha', type: 'folder' },
+                { name: 'budget.xlsx', type: 'file' },
+                { name: 'notes.txt', type: 'file' },
+            ],
+            'Pictures': [
+                { name: 'vacation.jpg', type: 'file' },
+                { name: 'meme.png', type: 'file' },
+            ],
+            'Music': [
+                { name: 'song.mp3', type: 'file' }
+            ],
+            'Project_Alpha': [
+                { name: 'spec.docx', type: 'file' }
+            ]
+        };
+
+        // --- 2. STATE ---
+        let currentPath = 'root';
+        let selectedFiles = [];
+        let logInterval = null;
+
+        // --- 3. RENDER FUNCTIONS ---
+        const grid = document.getElementById('file-grid');
+        const pathDisplay = document.getElementById('path-display');
+        const selectionList = document.getElementById('selection-list');
+
+        function renderFiles() {
+            grid.innerHTML = '';
+            pathDisplay.value = currentPath === 'root' ? 'My PC/' : `My PC/${currentPath}/`;
+
+            const files = fileSystem[currentPath] || [];
+
+            if (files.length === 0) {
+                grid.innerHTML = '<div style="color:#999; width:100%;">Folder is empty</div>';
+                return;
+            }
+
+            files.forEach(file => {
+                const el = document.createElement('div');
+                el.className = 'file-item';
+                // Check if selected
+                if (selectedFiles.includes(file.name)) el.classList.add('selected');
+
+                // Icons
+                const icon = file.type === 'folder' ? '📁' :
+                    file.name.endsWith('pdf') ? '📄' :
+                        file.name.endsWith('jpg') ? '🖼️' :
+                            file.name.endsWith('png') ? '🖼️' :
+                                file.name.endsWith('mp3') ? '🎵' : '📦';
+
+                el.innerHTML = `<div class="file-icon">${icon}</div><div class="file-name">${file.name}</div>`;
+
+                // Click to Select
+                el.onclick = (e) => {
+                    e.stopPropagation(); // Prevent double click interference
+                    toggleSelection(file.name, el);
+                };
+
+                // Double Click to Navigate (Folders only)
+                el.ondblclick = () => {
+                    if (file.type === 'folder') {
+                        currentPath = file.name;
+                        renderFiles();
+                    }
+                };
+
+                grid.appendChild(el);
+            });
+        }
+
+        function toggleSelection(fileName, domElement) {
+            // Simple toggle logic
+            if (selectedFiles.includes(fileName)) {
+                selectedFiles = selectedFiles.filter(f => f !== fileName);
+                domElement.classList.remove('selected');
+            } else {
+                selectedFiles.push(fileName);
+                domElement.classList.add('selected');
+            }
+            renderSelectionPanel();
+        }
+
+        function renderSelectionPanel() {
+            selectionList.innerHTML = '';
+            if (selectedFiles.length === 0) {
+                selectionList.innerHTML = '<div style="text-align:center; color:#999; font-size:0.8rem; margin-top:20px;">Select files from the grid</div>';
+                return;
+            }
+
+            selectedFiles.forEach(f => {
+                const tag = document.createElement('div');
+                tag.className = 'selected-tag';
+                tag.innerHTML = `<span>${f}</span><span style="color:red; cursor:pointer;" onclick="toggleSelection('${f}', document.querySelector('.selected'))">×</span>`;
+                selectionList.appendChild(tag);
+            });
+        }
+
+        // --- 4. NAVIGATION LOGIC ---
+        function loadPath(path) {
+            currentPath = path;
+            renderFiles();
+        }
+
+        function goUp() {
+            // Very basic "up" logic for demo
+            if (currentPath !== 'root') currentPath = 'root';
+            renderFiles();
+        }
+
+        // --- 5. SERVER SIMULATION ---
+        function startServer() {
+            if (selectedFiles.length === 0) {
+                alert("Please select at least one file first!");
+                return;
+            }
+
+            // Show Overlay
+            document.getElementById('server-overlay').style.display = 'flex';
+
+            // Simulate Logs
+            const terminal = document.getElementById('terminal-logs');
+            const messages = [
+                "Serving " + selectedFiles.length + " files...",
+                "Generating zip stream...",
+                "Connection accepted from 192.168.1.12",
+                "Request: GET /download/pack.zip",
+                "Sending bytes... [20%]",
+                "Sending bytes... [45%]",
+                "Sending bytes... [80%]",
+                "Transfer Complete!",
+                "Client disconnected."
+            ];
+
+            let i = 0;
+            logInterval = setInterval(() => {
+                if (i < messages.length) {
+                    const div = document.createElement('div');
+                    div.style.color = i % 2 === 0 ? '#2aa198' : '#839496';
+                    div.innerText = "> " + messages[i];
+                    terminal.appendChild(div);
+                    terminal.scrollTop = terminal.scrollHeight;
+                    i++;
+                }
+            }, 1500);
+        }
+
+        function stopServer() {
+            document.getElementById('server-overlay').style.display = 'none';
+            clearInterval(logInterval);
+            document.getElementById('terminal-logs').innerHTML =
+                '<div>> Initializing http server...</div><div>> Listening on :8080</div>';
+        }
+
+        // --- INIT ---
+        renderFiles();
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GODROP // SYSTEM_V1.0</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="app">
+        <header>
+            <h1>GODROP >_</h1>
+            <div id="status-badge" class="badge">SYSTEM ONLINE</div>
+        </header>
+
+        <main>
+            <div id="file-info">
+                <p class="label">FILE_OBJECT:</p>
+                <h2 id="filename">INITIALIZING...</h2>
+                <p id="filesize"></p>
+            </div>
+
+            <div id="stats">
+                <div class="stat-item">
+                    <span class="label">DOWNLOADS_AVAILABLE:</span>
+                    <span id="downloads-remaining" class="value">--</span>
+                </div>
+                <div class="stat-item">
+                    <span class="label">DOWNLOADS_TOTAL:</span>
+                    <span id="downloads-total" class="value">--</span>
+                </div>
+                <div class="stat-item">
+                    <span class="label">TIME_TO_SHUTDOWN:</span>
+                    <span id="time-left" class="value">INFINITY</span>
+                </div>
+            </div>
+
+            <div id="security-check" style="display: none;">
+                <p class="label">AUTHENTICATION_REQUIRED:</p>
+                <input type="password" id="security-code" placeholder="ENTER_ACCESS_CODE..." autocomplete="off">
+                <button id="verify-btn">VERIFY_IDENTITY</button>
+            </div>
+
+            <div id="action-area">
+                <button id="download-btn" disabled>INITIATE_TRANSFER</button>
+            </div>
+        </main>
+
+        <footer>
+            <p>GODROP TERMINAL // NO_LOGS_KEPT // <span class="blink">_</span></p>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
