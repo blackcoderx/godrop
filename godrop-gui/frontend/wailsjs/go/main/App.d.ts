@@ -6,9 +6,15 @@ export function GetDefaultSaveDir():Promise<string>;
 
 export function GetHomeDir():Promise<string>;
 
+export function GetSystemClipboard():Promise<string>;
+
 export function ReadDir(arg1:string):Promise<Array<main.FileEntry>>;
 
 export function SelectDirectory():Promise<string>;
+
+export function SetSystemClipboard(arg1:string):Promise<void>;
+
+export function StartClipboardServer(arg1:string):Promise<main.ServerResponse>;
 
 export function StartReceiveServer(arg1:string,arg2:string):Promise<main.ServerResponse>;
 

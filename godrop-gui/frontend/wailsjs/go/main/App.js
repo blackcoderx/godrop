@@ -10,12 +10,24 @@ export function GetHomeDir() {
   return window['go']['main']['App']['GetHomeDir']();
 }
 
+export function GetSystemClipboard() {
+  return window['go']['main']['App']['GetSystemClipboard']();
+}
+
 export function ReadDir(arg1) {
   return window['go']['main']['App']['ReadDir'](arg1);
 }
 
 export function SelectDirectory() {
   return window['go']['main']['App']['SelectDirectory']();
+}
+
+export function SetSystemClipboard(arg1) {
+  return window['go']['main']['App']['SetSystemClipboard'](arg1);
+}
+
+export function StartClipboardServer(arg1) {
+  return window['go']['main']['App']['StartClipboardServer'](arg1);
 }
 
 export function StartReceiveServer(arg1, arg2) {

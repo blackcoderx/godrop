@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import { GetHomeDir, ReadDir, StartServer, StopServer, StartReceiveServer, GetDefaultSaveDir, SelectDirectory } from '../wailsjs/go/main/App';
+import { GetHomeDir, ReadDir, StartServer, StopServer, StartReceiveServer, StartClipboardServer, GetDefaultSaveDir, SelectDirectory, GetSystemClipboard, SetSystemClipboard } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 
 function App() {
@@ -15,8 +15,9 @@ function App() {
     const [timeout, setTimeoutVal] = useState(10);
     const [isServerRunning, setIsServerRunning] = useState(false);
 
-    const [mode, setMode] = useState('send'); // 'send' | 'receive'
+    const [mode, setMode] = useState('send'); // 'send' | 'receive' | 'clipboard'
     const [saveLocation, setSaveLocation] = useState("");
+    const [clipboardText, setClipboardText] = useState("");
 
     // Initial Load
     useEffect(() => {
@@ -27,6 +28,9 @@ function App() {
 
             const defaultSave = await GetDefaultSaveDir();
             setSaveLocation(defaultSave);
+
+            const clip = await GetSystemClipboard();
+            setClipboardText(clip);
         };
         init();
 
@@ -37,7 +41,6 @@ function App() {
 
         EventsOn("file-received", (filename) => {
             addLog(`RECEIVED FILE: ${filename}`);
-            // Optional: Notification or flash
         });
 
         EventsOn("server_error", (err) => {
@@ -51,6 +54,16 @@ function App() {
         });
 
     }, []);
+
+    // Polling for Clipboard in Clipboard Mode
+    useEffect(() => {
+        if (mode !== 'clipboard' || isServerRunning) return;
+        const interval = setInterval(async () => {
+            const text = await GetSystemClipboard();
+            setClipboardText(text);
+        }, 2000);
+        return () => clearInterval(interval);
+    }, [mode, isServerRunning]);
 
     const loadDir = async (path) => {
         try {
@@ -104,9 +117,12 @@ function App() {
             if (mode === 'send') {
                 info = await StartServer(port, password, selectedFiles, limit, timeout);
                 addLog(`HOSTING ${selectedFiles.length} FILE(S)`);
-            } else {
+            } else if (mode === 'receive') {
                 info = await StartReceiveServer(port, saveLocation);
                 addLog(`DROPZONE ACTIVE. Saving to: ${saveLocation}`);
+            } else {
+                info = await StartClipboardServer(port);
+                addLog(`CLIPBOARD SERVER ACTIVE.`);
             }
 
             setServerInfo(info);
@@ -167,6 +183,7 @@ function App() {
                 <div className="mode-toggle">
                     <button className={mode === 'send' ? 'active' : ''} onClick={() => setMode('send')}>SEND</button>
                     <button className={mode === 'receive' ? 'active' : ''} onClick={() => setMode('receive')}>RECEIVE</button>
+                    <button className={mode === 'clipboard' ? 'active' : ''} onClick={() => setMode('clipboard')}>CLIPBOARD</button>
                 </div>
 
                 {mode === 'send' ? (
@@ -184,7 +201,7 @@ function App() {
                             ))}
                         </div>
                     </>
-                ) : (
+                ) : mode === 'receive' ? (
                     <>
                         <label className="form-label">Save Location</label>
                         <div className="dropzone-info">
@@ -194,6 +211,19 @@ function App() {
                                 if (dir) setSaveLocation(dir);
                             }}>Change...</button>
                         </div>
+                    </>
+                ) : (
+                    <>
+                        <label className="form-label">System Clipboard</label>
+                        <textarea
+                            className="form-input"
+                            style={{ height: '150px', resize: 'none', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
+                            value={clipboardText}
+                            onChange={(e) => setClipboardText(e.target.value)}
+                        />
+                        <button className="btn-small" style={{ marginTop: 10, width: '100%' }} onClick={() => SetSystemClipboard(clipboardText)}>
+                            UPDATE PC CLIPBOARD
+                        </button>
                     </>
                 )}
 
@@ -236,9 +266,11 @@ function App() {
                 <button
                     className="btn-start"
                     onClick={handleStartServer}
-                    disabled={mode === 'send' && selectedFiles.length === 0 || isServerRunning}
+                    disabled={(mode === 'send' && selectedFiles.length === 0) || isServerRunning}
                 >
-                    {mode === 'send' ? 'START SENDING 🚀' : 'OPEN DROPZONE 📥'}
+                    {mode === 'send' ? 'START SENDING 🚀' :
+                        mode === 'receive' ? 'OPEN DROPZONE 📥' :
+                            'START CLIPBOARD 📋'}
                 </button>
             </aside>
 
