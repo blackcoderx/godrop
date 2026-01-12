@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
+import logo from './assets/images/godrop-logo.png';
 import { GetHomeDir, ReadDir, StartServer, StopServer, StartReceiveServer, StartClipboardServer, GetDefaultSaveDir, SelectDirectory, GetSystemClipboard, SetSystemClipboard } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 
@@ -7,98 +8,69 @@ const RetroProgressBar = ({ percent }) => {
     return (
         <div style={{
             width: '100%',
-            height: '24px',
-            background: 'var(--bg-base)',
-            border: '2px solid var(--text-main)',
+            height: '16px',
+            background: 'var(--bg-panel)',
+            border: '2px solid var(--border)',
             position: 'relative',
-            marginTop: '20px',
-            overflow: 'hidden'
+            marginTop: '10px',
+            overflow: 'hidden',
+            borderRadius: '4px'
         }}>
             <div style={{
                 width: `${percent}%`,
                 height: '100%',
                 background: 'var(--accent)',
-                transition: 'width 0.1s steps(10)'
+                transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
             }} />
-            <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                color: percent > 50 ? 'white' : 'var(--text-main)',
-                mixBlendMode: 'difference'
-            }}>
-                {percent}%
-            </div>
         </div>
     );
 };
 
 function App() {
+    // Explorer State
     const [currentPath, setCurrentPath] = useState("");
     const [files, setFiles] = useState([]);
     const [selectedFiles, setSelectedFiles] = useState([]);
-    const [serverInfo, setServerInfo] = useState(null); // { ip, port, fullUrl, qrCode }
-    const [logs, setLogs] = useState([]);
+
+    // Server State
+    const [mode, setMode] = useState('send'); // 'send' | 'receive' | 'clipboard'
+    const [connectivity, setConnectivity] = useState('local'); // 'local' | 'cloud'
     const [password, setPassword] = useState("");
     const [port, setPort] = useState("8080");
     const [limit, setLimit] = useState(1);
     const [timeout, setTimeoutVal] = useState(10);
-    const [isServerRunning, setIsServerRunning] = useState(false);
-
-    const [mode, setMode] = useState('send'); // 'send' | 'receive' | 'clipboard'
     const [saveLocation, setSaveLocation] = useState("");
+
+    // UI State
+    const [isServerRunning, setIsServerRunning] = useState(false);
+    const [serverInfo, setServerInfo] = useState(null);
+    const [progress, setProgress] = useState(null);
+    const [logs, setLogs] = useState([]);
     const [clipboardText, setClipboardText] = useState("");
-    const [progress, setProgress] = useState(null); // { percent, transferred, total }
 
     // Initial Load
     useEffect(() => {
         const init = async () => {
             const home = await GetHomeDir();
-            setCurrentPath(home);
             loadDir(home);
-
             const defaultSave = await GetDefaultSaveDir();
             setSaveLocation(defaultSave);
-
-            const clip = await GetSystemClipboard();
-            setClipboardText(clip);
         };
         init();
 
-        // Listen for server events
-        EventsOn("download_started", (data) => {
-            addLog(`Download started from ${data.ip}`);
-        });
-
-        EventsOn("file-received", (filename) => {
-            addLog(`RECEIVED FILE: ${filename}`);
-        });
-
-        EventsOn("server_error", (err) => {
-            addLog(`Error: ${err}`);
-        });
-
+        EventsOn("download_started", (data) => addLog(`Download started from ${data.ip}`));
+        EventsOn("file-received", (filename) => addLog(`RECEIVED: ${filename}`));
+        EventsOn("server_error", (err) => addLog(`ERROR: ${err}`));
         EventsOn("server_stopped", () => {
             addLog("Server stopped.");
             setIsServerRunning(false);
             setServerInfo(null);
             setProgress(null);
         });
-
-        EventsOn("transfer-progress", (data) => {
-            setProgress(data);
-        });
-
+        EventsOn("transfer-progress", (data) => setProgress(data));
     }, []);
 
-    // Polling for Clipboard in Clipboard Mode
+    // Clipboard Update Loop
     useEffect(() => {
         if (mode !== 'clipboard' || isServerRunning) return;
         const interval = setInterval(async () => {
@@ -111,7 +83,6 @@ function App() {
     const loadDir = async (path) => {
         try {
             const entries = await ReadDir(path);
-            // Sort: folders first
             const sorted = entries.sort((a, b) => {
                 if (a.isDir === b.isDir) return a.name.localeCompare(b.name);
                 return a.isDir ? -1 : 1;
@@ -119,30 +90,24 @@ function App() {
             setFiles(sorted);
             setCurrentPath(path);
         } catch (err) {
-            console.error(err);
+            addLog(`Error loading dir: ${err}`);
         }
     };
 
     const handleNavigate = (file) => {
-        if (file.isDir) {
-            // Basic path joining. Only supports Windows for now based on context, but cleaner is to let backend handle joining if possible or simple string concat
-            // Wails sends paths as strings.
-            loadDir(file.img); // .img holds full path from backend
-        }
+        if (file.isDir) loadDir(file.img);
     };
 
     const handleUp = () => {
-        // Simple string manipulation to go up one level
-        // Supports both forward and backslashes
         const separator = currentPath.includes("/") ? "/" : "\\";
         const parts = currentPath.split(separator);
         parts.pop();
-        const newPath = parts.join(separator) || "root"; // Fallback to root if empty
+        const newPath = parts.join(separator) || "root";
         loadDir(newPath);
     };
 
     const toggleSelect = (file) => {
-        if (file.isDir) return; // Only select files
+        if (file.isDir) return;
         const path = file.img;
         if (selectedFiles.includes(path)) {
             setSelectedFiles(selectedFiles.filter(p => p !== path));
@@ -153,67 +118,83 @@ function App() {
 
     const handleStartServer = async () => {
         if (mode === 'send' && selectedFiles.length === 0) return;
+        if (connectivity === 'cloud') {
+            alert("Cloud Tunneling is coming soon!");
+            return;
+        }
 
-        setLogs([`INITIALIZING ${mode.toUpperCase()} SERVER ON PORT ${port}...`]);
-        setProgress(null);
+        setLogs([`INITIALIZING ${mode.toUpperCase()} OVER ${connectivity.toUpperCase()}...`]);
         try {
             let info;
             if (mode === 'send') {
                 info = await StartServer(port, password, selectedFiles, limit, timeout);
-                addLog(`HOSTING ${selectedFiles.length} FILE(S)`);
+                addLog(`BROADCASTING ${selectedFiles.length} FILES`);
             } else if (mode === 'receive') {
                 info = await StartReceiveServer(port, saveLocation);
-                addLog(`DROPZONE ACTIVE. Saving to: ${saveLocation}`);
+                addLog(`DROPZONE ACTIVE -> ${saveLocation}`);
             } else {
                 info = await StartClipboardServer(port);
-                addLog(`CLIPBOARD SERVER ACTIVE.`);
+                addLog(`CLIPBOARD SYNC ACTIVE`);
             }
-
             setServerInfo(info);
-            setPort(info.port); // Sync with actual port
+            setPort(info.port);
             setIsServerRunning(true);
-            addLog(`LIVE AT: ${info.fullUrl}`);
         } catch (err) {
-            addLog(`FAILED: ${err}`);
+            addLog(`STARTUP FAILED: ${err}`);
         }
     };
 
-    const handleStopServer = async () => {
-        await StopServer();
-        setIsServerRunning(false);
-        setServerInfo(null);
-    };
+    const handleAddLog = (msg) => setLogs(prev => [...prev, `> ${msg}`]);
+    const addLog = handleAddLog;
 
-    const addLog = (msg) => {
-        setLogs(prev => [...prev, `> ${msg}`]);
-    };
+    // Helper to get file basename
+    const basename = (path) => path.split(/[/\\]/).pop();
 
     return (
-        <div id="app" className="app-container">
-            {/* Sidebar */}
+        <div id="app">
+            {/* COLUMN 1: SIDEBAR */}
             <aside className="sidebar">
-                <div className="brand">⚡ GODROP</div>
-                <div className="nav-item active" onClick={() => GetHomeDir().then(loadDir)}>💻 My PC</div>
-                <div className="nav-item" onClick={() => loadDir("root")}>💿 Drives</div>
+                <div className="brand">
+                    <img src={logo} alt="Godrop" className="brand-logo" />
+                    Godrop
+                </div>
+
+                <div className={`nav-item ${mode === 'send' || mode === 'receive' ? 'active' : ''}`} onClick={() => setMode('send')}>
+                    📁 All Files
+                </div>
+                <div className="nav-item">
+                    💿 Drives
+                </div>
+                <div className={`nav-item ${mode === 'clipboard' ? 'active' : ''}`} onClick={() => setMode('clipboard')}>
+                    📋 Clipboard
+                </div>
+
+                <div className="user-account">
+                    User account
+                </div>
             </aside>
 
-            {/* Explorer */}
+            {/* COLUMN 2: MAIN EXPLORER */}
             <main className="explorer">
-                <div className="address-bar">
-                    <button onClick={handleUp} style={{ cursor: 'pointer', background: 'transparent', border: 'none', fontSize: '1.2rem' }}>⬆</button>
-                    <input type="text" className="path-input" value={currentPath} readOnly />
+                <div className="top-bar">
+                    <button className="btn-icon" onClick={handleUp}>↑</button>
+                    <div className="breadcrumb">
+                        My PC / {currentPath.split(/[/\\]/).slice(-2).map((p, i) => (
+                            <span key={i}>{p}{i === 0 ? ' / ' : ''}</span>
+                        ))}
+                    </div>
                 </div>
+
                 <div className="file-grid">
                     {files.map((file) => (
                         <div
                             key={file.name}
-                            className={`file-item ${selectedFiles.includes(file.img) ? 'selected' : ''}`}
+                            className={`file-card ${selectedFiles.includes(file.img) ? 'selected' : ''}`}
                             onClick={() => toggleSelect(file)}
                             onDoubleClick={() => handleNavigate(file)}
                         >
                             <div className="file-icon">
-                                {file.isDir ? '📁' :
-                                    file.name.endsWith('.zip') ? '📦' : '📄'}
+                                {file.isDir ? '📁' : file.name.match(/\.(jpg|jpeg|png|gif)$/i) ? '🖼️' : file.name.endsWith('.pdf') ? '📄' : '📦'}
                             </div>
                             <div className="file-name">{file.name}</div>
                         </div>
@@ -221,131 +202,118 @@ function App() {
                 </div>
             </main>
 
-            {/* Config Panel */}
+            {/* COLUMN 3: CONFIG PANEL */}
             <aside className="config-panel">
-                <div className="panel-title">Mode: {mode.toUpperCase()}</div>
-
-                <div className="mode-toggle">
-                    <button className={mode === 'send' ? 'active' : ''} onClick={() => setMode('send')}>SEND</button>
-                    <button className={mode === 'receive' ? 'active' : ''} onClick={() => setMode('receive')}>RECEIVE</button>
-                    <button className={mode === 'clipboard' ? 'active' : ''} onClick={() => setMode('clipboard')}>CLIPBOARD</button>
+                <div className="section-label">Connectivity</div>
+                <div className="toggle-group">
+                    <div className={`toggle-item ${connectivity === 'local' ? 'active' : ''}`} onClick={() => setConnectivity('local')}>Local</div>
+                    <div className={`toggle-item ${connectivity === 'cloud' ? 'active' : ''}`} onClick={() => setConnectivity('cloud')}>Cloud</div>
                 </div>
 
-                {mode === 'send' ? (
+                <div className="toggle-group" style={{ background: 'transparent' }}>
+                    <div className={`toggle-item ${mode === 'send' || mode === 'clipboard' ? 'active' : ''}`} onClick={() => setMode('send')}>Send</div>
+                    <div className={`toggle-item ${mode === 'receive' ? 'active' : ''}`} onClick={() => setMode('receive')}>Receive</div>
+                </div>
+
+                {mode === 'send' && (
                     <>
-                        <label className="form-label">Selected Files ({selectedFiles.length})</label>
-                        <div className="selection-list">
-                            {selectedFiles.length === 0 && <div style={{ textAlign: 'center', color: '#999', marginTop: 10 }}>Select files...</div>}
+                        <div className="section-label">
+                            <span>Selected Files</span>
+                            <span>{selectedFiles.length}</span>
+                        </div>
+                        <div className="list-box">
                             {selectedFiles.map(path => (
-                                <div key={path} className="selected-tag">
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }}>
-                                        {path.split(/[/\\]/).pop()}
-                                    </span>
-                                    <span style={{ color: 'red', cursor: 'pointer' }} onClick={() => setSelectedFiles(selectedFiles.filter(p => p !== path))}>×</span>
+                                <div key={path} className="list-item">
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{basename(path)}</span>
+                                    <span style={{ opacity: 0.5, cursor: 'pointer' }} onClick={() => setSelectedFiles(selectedFiles.filter(p => p !== path))}>×</span>
                                 </div>
                             ))}
                         </div>
                     </>
-                ) : mode === 'receive' ? (
+                )}
+
+                {mode === 'receive' && (
                     <>
-                        <label className="form-label">Save Location</label>
-                        <div className="dropzone-info">
-                            <div style={{ fontSize: '0.8rem', wordBreak: 'break-all', marginBottom: 10 }}>{saveLocation || "Not set"}</div>
-                            <button className="btn-small" onClick={async () => {
+                        <div className="section-label">Dropzone Location</div>
+                        <div className="list-box" style={{ padding: '20px', textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '10px' }}>{basename(saveLocation)}</div>
+                            <button className="btn-icon" style={{ width: '100%' }} onClick={async () => {
                                 const dir = await SelectDirectory();
                                 if (dir) setSaveLocation(dir);
-                            }}>Change...</button>
+                            }}>Change Path</button>
                         </div>
                     </>
-                ) : (
+                )}
+
+                {mode === 'clipboard' && (
                     <>
-                        <label className="form-label">System Clipboard</label>
+                        <div className="section-label">Local Clipboard</div>
                         <textarea
-                            className="form-input"
-                            style={{ height: '150px', resize: 'none', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
+                            className="input-ui"
+                            style={{ flex: 1, minHeight: '150px', resize: 'none', marginBottom: '10px' }}
                             value={clipboardText}
                             onChange={(e) => setClipboardText(e.target.value)}
                         />
-                        <button className="btn-small" style={{ marginTop: 10, width: '100%' }} onClick={() => SetSystemClipboard(clipboardText)}>
-                            UPDATE PC CLIPBOARD
-                        </button>
+                        <button className="btn-icon" style={{ width: '100%', marginBottom: '25px' }} onClick={() => SetSystemClipboard(clipboardText)}>Add to Clipboard</button>
                     </>
                 )}
 
-                <hr style={{ width: '100%', borderColor: 'var(--border)', opacity: 0.3, margin: '20px 0' }} />
-
-                <div className="form-group">
-                    <label className="form-label">Password (Optional)</label>
-                    <input
-                        type="password"
-                        className="form-input"
-                        placeholder="••••••"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                    />
+                <div className="input-block">
+                    <label className="input-label">Password</label>
+                    <input type="password" placeholder="optional" className="input-ui" value={password} onChange={e => setPassword(e.target.value)} />
                 </div>
 
-                {mode === 'send' && (
-                    <div className="toggle-row" style={{ display: 'flex', gap: 10 }}>
-                        <div className="form-group" style={{ flex: 1 }}>
-                            <label className="form-label">Limit (0=Unlim)</label>
-                            <input type="number" className="form-input" min="0" value={limit} onChange={e => setLimit(parseInt(e.target.value) || 0)} />
-                        </div>
-                        <div className="form-group" style={{ flex: 1 }}>
-                            <label className="form-label">Time (Min)</label>
-                            <input type="number" className="form-input" min="0" value={timeout} onChange={e => setTimeoutVal(parseInt(e.target.value) || 0)} />
-                        </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div className="input-block">
+                        <label className="input-label">Time (min)</label>
+                        <input type="number" className="input-ui" value={timeout} onChange={e => setTimeoutVal(parseInt(e.target.value) || 0)} />
                     </div>
-                )}
-
-                <div className="form-group">
-                    <label className="form-label">Port</label>
-                    <input
-                        type="number"
-                        className="form-input"
-                        value={port}
-                        onChange={e => setPort(e.target.value)}
-                    />
+                    <div className="input-block">
+                        <label className="input-label">Port</label>
+                        <input type="number" className="input-ui" value={port} onChange={e => setPort(e.target.value)} />
+                    </div>
                 </div>
 
                 <button
-                    className="btn-start"
+                    className="btn-primary"
                     onClick={handleStartServer}
-                    disabled={(mode === 'send' && selectedFiles.length === 0) || isServerRunning}
+                    disabled={isServerRunning || (mode === 'send' && selectedFiles.length === 0)}
                 >
-                    {mode === 'send' ? 'START SENDING 🚀' :
-                        mode === 'receive' ? 'OPEN DROPZONE 📥' :
-                            'START CLIPBOARD 📋'}
+                    {isServerRunning ? 'SERVER LIVE' : 'Start Server'}
                 </button>
             </aside>
 
-            {/* Server Overlay */}
+            {/* SERVER OVERLAY */}
             {isServerRunning && serverInfo && (
                 <div className="server-overlay">
                     <div className="server-card">
                         <div className="card-header">
-                            <span>GODROP SERVER RUNNING</span>
-                            <span>● LIVE</span>
+                            <span>{mode.toUpperCase()} ● LIVE</span>
+                            <span>{connectivity.toUpperCase()}</span>
                         </div>
                         <div className="card-body">
-                            <div className="qr-section">
-                                <img src={serverInfo.qrCode} alt="QR Code" style={{ width: 150, height: 150 }} />
+                            <div className="qr-box">
+                                <img src={serverInfo.qrCode} className="qr-image" alt="QR" />
                                 <div className="url-box">{serverInfo.fullUrl}</div>
-                                <div style={{ fontSize: '0.7rem', marginTop: 5, color: '#999' }}>Scan to Download</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '10px' }}>Scan to connect</div>
                             </div>
-                            <div className="log-section">
+                            <div className="log-box">
                                 {logs.map((log, i) => <div key={i}>{log}</div>)}
                             </div>
                         </div>
                         {progress && (
-                            <div style={{ padding: '0 20px' }}>
+                            <div className="progress-container">
                                 <RetroProgressBar percent={progress.percent} />
-                                <div style={{ fontSize: '0.7rem', textAlign: 'center', marginTop: 5, fontFamily: 'var(--font-mono)' }}>
+                                <div className="progress-text">
                                     {Math.round(progress.transferred / 1024 / 1024 * 10) / 10} MB / {Math.round(progress.total / 1024 / 1024 * 10) / 10} MB
                                 </div>
                             </div>
                         )}
-                        <button className="btn-stop" onClick={handleStopServer}>STOP SERVER</button>
+                        <button className="btn-stop" onClick={async () => {
+                            await StopServer();
+                            setIsServerRunning(false);
+                            setServerInfo(null);
+                        }}>STOP SERVER</button>
                     </div>
                 </div>
             )}

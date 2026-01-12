@@ -26,4 +26,8 @@ godrop.exe
 .vscode/
 .idea/
 *.swp
-*.swo
+*.
+
+#ui
+main.png
+clipboard.png 
