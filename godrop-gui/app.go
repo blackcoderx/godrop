@@ -8,11 +8,15 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -180,42 +184,38 @@ func (a *App) StartServer(port string, password string, files []string, limit in
 		return ServerResponse{}, fmt.Errorf("no files selected")
 	}
 
-	// Prepare file(s)
 	var targetFile string
 	var fileName string
-	var fileSize int64
 
-	if len(files) > 1 {
-		// Zip multiple files
-		tmpZip, err := os.CreateTemp("", "godrop-*.zip")
-		if err != nil {
-			return ServerResponse{}, err
-		}
-		zw := zip.NewWriter(tmpZip)
-		for _, f := range files {
-			if err := addFileToZip(zw, f); err != nil {
-				log.Printf("Failed to add %s: %v", f, err)
+	if len(files) == 1 {
+		fi, err := os.Stat(files[0])
+		if err == nil && fi.IsDir() {
+			// It's a single directory, we should zip it
+			var zipErr error
+			targetFile, fileName, zipErr = a.createZipArchive(files)
+			if zipErr != nil {
+				return ServerResponse{}, zipErr
 			}
+		} else {
+			// Single file
+			targetFile = files[0]
+			fileName = filepath.Base(targetFile)
+			a.isTempArchive = false
 		}
-		zw.Close()
-		tmpZip.Close()
-
-		targetFile = tmpZip.Name()
-		a.isTempArchive = true
-		a.archivePath = targetFile
-		fileName = "godrop-archive.zip"
 	} else {
-		// Single file
-		targetFile = files[0]
-		fileName = filepath.Base(targetFile)
-		a.isTempArchive = false
+		// Multiple files
+		var zipErr error
+		targetFile, fileName, zipErr = a.createZipArchive(files)
+		if zipErr != nil {
+			return ServerResponse{}, zipErr
+		}
 	}
 
 	info, err := os.Stat(targetFile)
 	if err != nil {
 		return ServerResponse{}, err
 	}
-	fileSize = info.Size()
+	fileSize := info.Size()
 
 	// Initialize Server State
 	a.downloadLimit = limit
@@ -272,15 +272,73 @@ func (a *App) StartServer(port string, password string, files []string, limit in
 		current := a.currentDownloads
 		a.serverMutex.Unlock()
 
-		w.Header().Set("Content-Disposition", "attachment; filename="+fileName)
-		http.ServeFile(w, r, targetFile)
-
+		// Emit start event
 		wailsRuntime.EventsEmit(a.ctx, "download_started", map[string]string{"ip": r.RemoteAddr})
+
+		pt := &ProgressTracker{
+			Total:     fileSize,
+			EventName: "transfer-progress",
+			Ctx:       a.ctx,
+		}
+
+		// Wrap response writer to track progress
+		pw := &ProgressResponseWriter{
+			ResponseWriter: w,
+			pt:             pt,
+		}
+
+		// Robust Content-Type mapping
+		ext := strings.ToLower(filepath.Ext(fileName))
+		contentType := mime.TypeByExtension(ext)
+		if contentType == "" {
+			// Fallback map for common types if system mime DB is missing
+			mimeMap := map[string]string{
+				".pdf":  "application/pdf",
+				".jpg":  "image/jpeg",
+				".jpeg": "image/jpeg",
+				".png":  "image/png",
+				".gif":  "image/gif",
+				".mp4":  "video/mp4",
+				".zip":  "application/zip",
+				".txt":  "text/plain; charset=utf-8",
+			}
+			if m, ok := mimeMap[ext]; ok {
+				contentType = m
+			}
+		}
+
+		if contentType == "" {
+			// Try sniffing if still unknown
+			if f, err := os.Open(targetFile); err == nil {
+				buffer := make([]byte, 512)
+				n, _ := f.Read(buffer)
+				contentType = http.DetectContentType(buffer[:n])
+				f.Close()
+			}
+		}
+
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+
+		// RFC 5987: Robust filename encoding
+		encodedName := url.PathEscape(fileName)
+		disposition := fmt.Sprintf("attachment; filename=%q; filename*=UTF-8''%s", fileName, encodedName)
+
+		w.Header().Set("Content-Disposition", disposition)
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+
+		http.ServeFile(pw, r, targetFile)
 
 		// Auto-shutdown if limit reached
 		if a.downloadLimit > 0 && current >= a.downloadLimit {
 			go func() {
-				time.Sleep(2 * time.Second) // allow transfer to start/finish packet
+				// Wait a bit more for OS buffers to flush
+				time.Sleep(5 * time.Second)
 				a.StopServer()
 			}()
 		}
@@ -313,9 +371,18 @@ func (a *App) StartServer(port string, password string, files []string, limit in
 		w.Write([]byte(html))
 	})
 
-	// find IP
+	// find IP and Actual Port
 	ip := GetOutboundIP()
-	fullURL := fmt.Sprintf("http://%s:%s", ip, port)
+	prefPort, _ := strconv.Atoi(port)
+	if prefPort == 0 {
+		prefPort = 8080
+	}
+	actualPort, err := FindAvailablePort(prefPort)
+	if err != nil {
+		return ServerResponse{}, err
+	}
+	portStr := strconv.Itoa(actualPort)
+	fullURL := fmt.Sprintf("http://%s:%s", ip, portStr)
 
 	// Generate QR
 	png, err := qrcode.Encode(fullURL, qrcode.Medium, 256)
@@ -324,7 +391,7 @@ func (a *App) StartServer(port string, password string, files []string, limit in
 	}
 
 	// Start Server
-	a.server = &http.Server{Addr: ":" + port, Handler: mux}
+	a.server = &http.Server{Addr: ":" + portStr, Handler: mux}
 
 	go func() {
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -336,7 +403,7 @@ func (a *App) StartServer(port string, password string, files []string, limit in
 
 	return ServerResponse{
 		IP:      ip,
-		Port:    port,
+		Port:    portStr,
 		FullURL: fullURL,
 		QRCode:  "data:image/png;base64," + toBase64(png),
 	}, nil
@@ -445,8 +512,15 @@ func (a *App) StartReceiveServer(port string, saveDir string) (ServerResponse, e
 		}
 		defer dst.Close()
 
-		// Stream copy
-		if _, err := io.Copy(dst, file); err != nil {
+		// Stream copy with Progress Tracking
+		pt := &ProgressTracker{
+			Total:     handler.Size,
+			EventName: "transfer-progress",
+			Ctx:       a.ctx,
+			Reader:    file,
+		}
+
+		if _, err := io.Copy(dst, pt); err != nil {
 			http.Error(w, "Error saving file content", http.StatusInternalServerError)
 			return
 		}
@@ -463,14 +537,23 @@ func (a *App) StartReceiveServer(port string, saveDir string) (ServerResponse, e
 
 	// Setup Server
 	ip := GetOutboundIP()
-	fullURL := fmt.Sprintf("http://%s:%s", ip, port)
+	prefPort, _ := strconv.Atoi(port)
+	if prefPort == 0 {
+		prefPort = 8080
+	}
+	actualPort, err := FindAvailablePort(prefPort)
+	if err != nil {
+		return ServerResponse{}, err
+	}
+	portStr := strconv.Itoa(actualPort)
+	fullURL := fmt.Sprintf("http://%s:%s", ip, portStr)
 
 	png, err := qrcode.Encode(fullURL, qrcode.Medium, 256)
 	if err != nil {
 		return ServerResponse{}, err
 	}
 
-	a.server = &http.Server{Addr: ":" + port, Handler: mux}
+	a.server = &http.Server{Addr: ":" + portStr, Handler: mux}
 
 	go func() {
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -481,7 +564,7 @@ func (a *App) StartReceiveServer(port string, saveDir string) (ServerResponse, e
 
 	return ServerResponse{
 		IP:      ip,
-		Port:    port,
+		Port:    portStr,
 		FullURL: fullURL,
 		QRCode:  "data:image/png;base64," + toBase64(png),
 	}, nil
@@ -518,9 +601,18 @@ func (a *App) StartClipboardServer(port string) (ServerResponse, error) {
 		http.Redirect(w, r, "/clipboard", http.StatusSeeOther)
 	})
 
-	// find IP
+	// find IP and Actual Port
 	ip := GetOutboundIP()
-	fullURL := fmt.Sprintf("http://%s:%s/clipboard", ip, port)
+	prefPort, _ := strconv.Atoi(port)
+	if prefPort == 0 {
+		prefPort = 8080
+	}
+	actualPort, err := FindAvailablePort(prefPort)
+	if err != nil {
+		return ServerResponse{}, err
+	}
+	portStr := strconv.Itoa(actualPort)
+	fullURL := fmt.Sprintf("http://%s:%s/clipboard", ip, portStr)
 
 	// Generate QR
 	png, err := qrcode.Encode(fullURL, qrcode.Medium, 256)
@@ -529,7 +621,7 @@ func (a *App) StartClipboardServer(port string) (ServerResponse, error) {
 	}
 
 	// Start Server
-	a.server = &http.Server{Addr: ":" + port, Handler: mux}
+	a.server = &http.Server{Addr: ":" + portStr, Handler: mux}
 
 	go func() {
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -540,7 +632,7 @@ func (a *App) StartClipboardServer(port string) (ServerResponse, error) {
 
 	return ServerResponse{
 		IP:      ip,
-		Port:    port,
+		Port:    portStr,
 		FullURL: fullURL,
 		QRCode:  "data:image/png;base64," + toBase64(png),
 	}, nil
@@ -657,14 +749,33 @@ func GetOutboundIP() string {
 	return localAddr.IP.String()
 }
 
-func addFileToZip(zw *zip.Writer, filename string) error {
-	file, err := os.Open(filename)
+func (a *App) createZipArchive(files []string) (string, string, error) {
+	tmpZip, err := os.CreateTemp("", "godrop-*.zip")
 	if err != nil {
-		return err
+		return "", "", err
 	}
-	defer file.Close()
+	zw := zip.NewWriter(tmpZip)
+	for _, f := range files {
+		if err := addFileToZip(zw, f, ""); err != nil {
+			log.Printf("Failed to add %s: %v", f, err)
+		}
+	}
+	zw.Close()
+	tmpZip.Close()
 
-	info, err := file.Stat()
+	a.isTempArchive = true
+	a.archivePath = tmpZip.Name()
+
+	name := "godrop-archive.zip"
+	if len(files) == 1 {
+		name = filepath.Base(files[0]) + ".zip"
+	}
+
+	return tmpZip.Name(), name, nil
+}
+
+func addFileToZip(zw *zip.Writer, fullPath string, baseInZip string) error {
+	info, err := os.Stat(fullPath)
 	if err != nil {
 		return err
 	}
@@ -673,13 +784,46 @@ func addFileToZip(zw *zip.Writer, filename string) error {
 	if err != nil {
 		return err
 	}
-	header.Name = filepath.Base(filename)
-	header.Method = zip.Deflate
 
+	// Set the name within the zip
+	if baseInZip == "" {
+		header.Name = filepath.Base(fullPath)
+	} else {
+		header.Name = filepath.Join(baseInZip, filepath.Base(fullPath))
+	}
+
+	if info.IsDir() {
+		header.Name += "/"
+		writer, err := zw.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+		// List and add children
+		files, err := os.ReadDir(fullPath)
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			if err := addFileToZip(zw, filepath.Join(fullPath, f.Name()), header.Name); err != nil {
+				return err
+			}
+		}
+		_ = writer
+		return nil
+	}
+
+	header.Method = zip.Deflate
 	writer, err := zw.CreateHeader(header)
 	if err != nil {
 		return err
 	}
+
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
 	_, err = io.Copy(writer, file)
 	return err
 }
@@ -700,4 +844,82 @@ func formatSize(bytes int64) string {
 // toBase64 helper
 func toBase64(b []byte) string {
 	return base64.StdEncoding.EncodeToString(b)
+}
+
+// FindAvailablePort tries to find an available port starting from startPort
+func FindAvailablePort(startPort int) (int, error) {
+	for port := startPort; port < startPort+100; port++ {
+		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+		if err == nil {
+			ln.Close()
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("could not find an available port after 100 attempts")
+}
+
+// ProgressTracker tracks io progress and emits Wails events
+type ProgressTracker struct {
+	Total      int64
+	Current    int64
+	LastEmit   time.Time
+	EventName  string
+	Ctx        context.Context
+	Writer     io.Writer
+	Reader     io.Reader
+	isFinished bool
+}
+
+func (pt *ProgressTracker) Write(p []byte) (int, error) {
+	n, err := pt.Writer.Write(p)
+	pt.Current += int64(n)
+	pt.emitProgress()
+	return n, err
+}
+
+func (pt *ProgressTracker) Read(p []byte) (int, error) {
+	n, err := pt.Reader.Read(p)
+	pt.Current += int64(n)
+	pt.emitProgress()
+	return n, err
+}
+
+func (pt *ProgressTracker) emitProgress() {
+	if pt.isFinished {
+		return
+	}
+
+	percent := int(float64(pt.Current) / float64(pt.Total) * 100)
+	if percent > 100 {
+		percent = 100
+	}
+
+	// Emit if 100% or >100ms since last emit
+	if percent == 100 || time.Since(pt.LastEmit) > 100*time.Millisecond {
+		wailsRuntime.EventsEmit(pt.Ctx, pt.EventName, map[string]interface{}{
+			"percent":     percent,
+			"transferred": pt.Current,
+			"total":       pt.Total,
+		})
+		pt.LastEmit = time.Now()
+	}
+}
+
+// ProgressResponseWriter wraps http.ResponseWriter to track bytes written
+type ProgressResponseWriter struct {
+	http.ResponseWriter
+	pt *ProgressTracker
+}
+
+func (pw *ProgressResponseWriter) Write(p []byte) (int, error) {
+	n, err := pw.ResponseWriter.Write(p)
+	pw.pt.Current += int64(n)
+	pw.pt.emitProgress()
+	return n, err
+}
+
+func (pw *ProgressResponseWriter) Flush() {
+	if f, ok := pw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }

@@ -3,6 +3,43 @@ import './App.css';
 import { GetHomeDir, ReadDir, StartServer, StopServer, StartReceiveServer, StartClipboardServer, GetDefaultSaveDir, SelectDirectory, GetSystemClipboard, SetSystemClipboard } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 
+const RetroProgressBar = ({ percent }) => {
+    return (
+        <div style={{
+            width: '100%',
+            height: '24px',
+            background: 'var(--bg-base)',
+            border: '2px solid var(--text-main)',
+            position: 'relative',
+            marginTop: '20px',
+            overflow: 'hidden'
+        }}>
+            <div style={{
+                width: `${percent}%`,
+                height: '100%',
+                background: 'var(--accent)',
+                transition: 'width 0.1s steps(10)'
+            }} />
+            <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                color: percent > 50 ? 'white' : 'var(--text-main)',
+                mixBlendMode: 'difference'
+            }}>
+                {percent}%
+            </div>
+        </div>
+    );
+};
+
 function App() {
     const [currentPath, setCurrentPath] = useState("");
     const [files, setFiles] = useState([]);
@@ -18,6 +55,7 @@ function App() {
     const [mode, setMode] = useState('send'); // 'send' | 'receive' | 'clipboard'
     const [saveLocation, setSaveLocation] = useState("");
     const [clipboardText, setClipboardText] = useState("");
+    const [progress, setProgress] = useState(null); // { percent, transferred, total }
 
     // Initial Load
     useEffect(() => {
@@ -51,6 +89,11 @@ function App() {
             addLog("Server stopped.");
             setIsServerRunning(false);
             setServerInfo(null);
+            setProgress(null);
+        });
+
+        EventsOn("transfer-progress", (data) => {
+            setProgress(data);
         });
 
     }, []);
@@ -112,6 +155,7 @@ function App() {
         if (mode === 'send' && selectedFiles.length === 0) return;
 
         setLogs([`INITIALIZING ${mode.toUpperCase()} SERVER ON PORT ${port}...`]);
+        setProgress(null);
         try {
             let info;
             if (mode === 'send') {
@@ -126,6 +170,7 @@ function App() {
             }
 
             setServerInfo(info);
+            setPort(info.port); // Sync with actual port
             setIsServerRunning(true);
             addLog(`LIVE AT: ${info.fullUrl}`);
         } catch (err) {
@@ -292,6 +337,14 @@ function App() {
                                 {logs.map((log, i) => <div key={i}>{log}</div>)}
                             </div>
                         </div>
+                        {progress && (
+                            <div style={{ padding: '0 20px' }}>
+                                <RetroProgressBar percent={progress.percent} />
+                                <div style={{ fontSize: '0.7rem', textAlign: 'center', marginTop: 5, fontFamily: 'var(--font-mono)' }}>
+                                    {Math.round(progress.transferred / 1024 / 1024 * 10) / 10} MB / {Math.round(progress.total / 1024 / 1024 * 10) / 10} MB
+                                </div>
+                            </div>
+                        )}
                         <button className="btn-stop" onClick={handleStopServer}>STOP SERVER</button>
                     </div>
                 </div>

@@ -4,580 +4,651 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Godrop - Retro Explorer</title>
+    <title>Godrop Pro - Premium SaaS</title>
     <style>
         :root {
-            /* Solarized Light Theme */
-            --bg-base: #fdf6e3;
-            --bg-panel: #eee8d5;
-            --bg-white: #ffffff;
-            --text-main: #657b83;
-            --text-heading: #586e75;
-            --accent: #2aa198;
-            /* Cyan */
-            --accent-hover: #238981;
-            --orange: #cb4b16;
-            --border: #93a1a1;
-            --selection: #d3ebfa;
-            --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            --font-mono: 'Fira Code', 'Courier New', monospace;
+            /* --- PREMIUM PALETTE --- */
+            /* Carbon Black Scale */
+            --bg-app: #09090b;
+            /* Deepest Black */
+            --bg-panel: #18181b;
+            /* Sidebar/Panel */
+            --bg-element: #27272a;
+            /* Inputs/Cards */
+            --border: #3f3f46;
+            /* Subtle Borders */
+
+            /* Snow Typography */
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+
+            /* Blue Bell Accent */
+            --accent: #818cf8;
+            /* The Blue Bell color */
+            --accent-glow: rgba(129, 140, 248, 0.15);
+            --accent-hover: #6366f1;
         }
 
         * {
             box-sizing: border-box;
+            outline: none;
             user-select: none;
         }
 
         body {
             margin: 0;
             padding: 0;
-            font-family: var(--font-ui);
-            background-color: var(--bg-base);
-            color: var(--text-main);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
             height: 100vh;
+            display: flex;
             overflow: hidden;
-            display: flex;
+            font-size: 14px;
         }
 
-        /* --- LAYOUT --- */
-        #app-container {
-            display: flex;
-            width: 100%;
-            height: 100%;
-            transition: filter 0.3s;
-        }
-
-        /* LEFT SIDEBAR */
+        /* --- 1. SIDEBAR --- */
         .sidebar {
-            width: 220px;
-            background-color: var(--bg-panel);
+            width: 260px;
+            background: var(--bg-app);
+            /* Match body for seamless look */
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            padding: 20px;
+            padding: 24px;
         }
 
         .brand {
-            font-family: var(--font-mono);
-            font-weight: 800;
-            font-size: 1.5rem;
-            color: var(--orange);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--text-primary);
             margin-bottom: 40px;
-            letter-spacing: -1px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .nav-item {
-            padding: 10px;
-            margin-bottom: 5px;
-            border-radius: 4px;
-            cursor: pointer;
-            color: var(--text-heading);
-            font-weight: 500;
             display: flex;
             align-items: center;
             gap: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        .brand span {
+            color: var(--accent);
+        }
+
+        .nav-header {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            margin-top: 24px;
+        }
+
+        .nav-item {
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s ease;
         }
 
         .nav-item:hover {
-            background: rgba(255, 255, 255, 0.4);
+            background: var(--bg-element);
+            color: var(--text-primary);
         }
 
         .nav-item.active {
-            background: #dfd8c2;
-            color: var(--text-main);
-            font-weight: bold;
+            background: var(--accent-glow);
+            color: var(--accent);
         }
 
-        /* CENTER EXPLORER */
+        .user-profile {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #4f46e5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        /* --- 2. MAIN EXPLORER --- */
         .explorer {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: var(--bg-white);
+            background: var(--bg-app);
         }
 
-        .address-bar {
-            padding: 15px;
+        .top-bar {
+            height: 64px;
             border-bottom: 1px solid var(--border);
             display: flex;
-            gap: 10px;
-            background: var(--bg-panel);
+            align-items: center;
+            padding: 0 32px;
+            justify-content: space-between;
         }
 
-        .path-input {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            font-family: var(--font-mono);
-            color: var(--text-heading);
-            background: var(--bg-white);
+        .breadcrumbs {
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .breadcrumbs span {
+            color: var(--text-primary);
         }
 
         .file-grid {
             flex: 1;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            grid-auto-rows: 130px;
-            gap: 10px;
+            padding: 32px;
             overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            grid-auto-rows: 140px;
+            gap: 16px;
         }
 
-        .file-item {
+        .file-card {
+            background: var(--bg-panel);
+            border: 1px solid transparent;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border-radius: 6px;
-            border: 1px solid transparent;
             cursor: pointer;
-            transition: all 0.1s;
-            text-align: center;
-            padding: 10px;
+            transition: all 0.2s;
+            position: relative;
         }
 
-        .file-item:hover {
-            background-color: #f0f0f0;
+        .file-card:hover {
+            border-color: var(--border);
+            transform: translateY(-2px);
         }
 
-        .file-item.selected {
-            background-color: var(--selection);
-            border-color: #a4d4f7;
+        .file-card.selected {
+            background: var(--accent-glow);
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(129, 140, 248, 0.1);
         }
 
-        .file-icon {
-            font-size: 3rem;
-            margin-bottom: 10px;
+        .icon-large {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            opacity: 0.8;
         }
 
         .file-name {
+            color: var(--text-secondary);
             font-size: 0.85rem;
-            word-break: break-word;
-            line-height: 1.3;
-        }
-
-        /* RIGHT CONFIG PANEL */
-        .config-panel {
-            width: 320px;
-            background: var(--bg-base);
-            border-left: 1px solid var(--border);
-            padding: 25px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .panel-title {
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            font-weight: 700;
-            letter-spacing: 1px;
-            margin-bottom: 15px;
-            color: var(--text-heading);
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 5px;
-        }
-
-        .selection-list {
-            flex: 1;
-            border: 1px dashed var(--border);
-            background: rgba(255, 255, 255, 0.5);
-            margin-bottom: 20px;
-            padding: 10px;
-            overflow-y: auto;
-            border-radius: 4px;
-        }
-
-        .selected-tag {
-            background: white;
-            padding: 8px;
-            margin-bottom: 6px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-            font-size: 0.8rem;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-        }
-
-        .btn-start {
-            background-color: var(--accent);
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: 0.2s;
-            box-shadow: 0 4px 0 #1d746d;
-            /* Retro button feel */
-        }
-
-        .btn-start:active {
-            transform: translateY(4px);
-            box-shadow: none;
-        }
-
-        /* --- SERVER MODAL OVERLAY --- */
-        #server-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            display: none;
-            /* Hidden by default */
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-
-        .server-card {
-            background: var(--bg-base);
-            width: 600px;
-            height: 450px;
-            border-radius: 8px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--text-main);
-            display: flex;
-            flex-direction: column;
+            text-align: center;
+            max-width: 90%;
             overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        .card-header {
-            background: var(--text-main);
-            color: var(--bg-base);
-            padding: 15px;
-            font-family: var(--font-mono);
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
+        .file-card.selected .file-name {
+            color: var(--text-primary);
+            font-weight: 600;
         }
 
-        .card-body {
-            flex: 1;
-            display: flex;
-            padding: 20px;
-            gap: 20px;
-        }
-
-        .qr-section {
-            flex: 1;
+        /* --- 3. CONFIG PANEL (Right) --- */
+        .config-panel {
+            width: 360px;
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-right: 1px dashed var(--border);
-            padding-right: 20px;
-        }
-
-        .log-section {
-            flex: 1;
-            background: #002b36;
-            /* Solarized Dark for terminal */
-            color: #839496;
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-            padding: 10px;
-            border-radius: 4px;
+            padding: 24px;
             overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
         }
 
-        .url-box {
-            font-family: var(--font-mono);
-            background: var(--bg-white);
+        /* Tabs & Toggles */
+        .toggle-container {
+            background: var(--bg-element);
+            padding: 4px;
+            border-radius: 8px;
+            display: flex;
+            margin-bottom: 24px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            text-align: center;
             padding: 8px;
-            border: 1px solid var(--border);
-            margin-top: 15px;
-            font-weight: bold;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: var(--bg-panel);
+            color: var(--text-primary);
+            shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-btn.active.cloud-active {
             color: var(--accent);
         }
 
-        .btn-stop {
-            margin: 20px;
-            padding: 10px;
-            background: var(--orange);
+        /* Section Headers */
+        .panel-header {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            margin-top: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Dynamic Content Boxes */
+        .content-box {
+            background: var(--bg-app);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            min-height: 120px;
+            padding: 12px;
+            margin-bottom: 24px;
+            overflow-y: auto;
+        }
+
+        /* Selected Items */
+        .selected-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-element);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            border: 1px solid transparent;
+        }
+
+        .selected-row:hover {
+            border-color: var(--border);
+        }
+
+        .remove-x {
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .remove-x:hover {
+            color: var(--accent);
+        }
+
+        /* Dropzone Visual */
+        .dropzone-visual {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            text-align: center;
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+        }
+
+        /* Inputs */
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .input-ui {
+            width: 100%;
+            background: var(--bg-element);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+
+        .input-ui:focus {
+            border-color: var(--accent);
+        }
+
+        .row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Status & Button */
+        .server-status {
+            background: var(--bg-element);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            margin-top: auto;
+            margin-bottom: 12px;
+        }
+
+        .url-text {
+            color: var(--accent);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: var(--accent);
             color: white;
             border: none;
-            font-weight: bold;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 600;
             cursor: pointer;
-            border-radius: 4px;
+            transition: 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 0 15px var(--accent-glow);
         }
     </style>
 </head>
 
 <body>
 
-    <!-- MAIN APP INTERFACE -->
-    <div id="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="brand">⚡ GODROP</div>
-            <div class="nav-item active" onclick="loadPath('root')">💻 My PC</div>
-            <div class="nav-item" onclick="loadPath('Downloads')">⬇️ Downloads</div>
-            <div class="nav-item" onclick="loadPath('Documents')">📄 Documents</div>
-            <div class="nav-item" onclick="loadPath('Pictures')">🖼️ Pictures</div>
-        </aside>
-
-        <!-- Explorer -->
-        <main class="explorer">
-            <div class="address-bar">
-                <button onclick="goUp()">⬆</button>
-                <input type="text" id="path-display" class="path-input" value="My PC/" readonly>
-            </div>
-            <div class="file-grid" id="file-grid">
-                <!-- Javascript will inject files here -->
-            </div>
-        </main>
-
-        <!-- Config Panel -->
-        <aside class="config-panel">
-            <div class="panel-title">Preparation</div>
-
-            <label class="form-label">Selected Files</label>
-            <div class="selection-list" id="selection-list">
-                <div style="text-align:center; color:#999; font-size:0.8rem; margin-top:20px;">
-                    Select files from the grid
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Password (Optional)</label>
-                <input type="password" class="form-input" placeholder="••••••">
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Port</label>
-                <input type="number" class="form-input" value="8080">
-            </div>
-
-            <button class="btn-start" onclick="startServer()">START SERVER 🚀</button>
-        </aside>
-    </div>
-
-    <!-- LIVE SERVER OVERLAY (Hidden by default) -->
-    <div id="server-overlay">
-        <div class="server-card">
-            <div class="card-header">
-                <span>GODROP SERVER RUNNING</span>
-                <span>● LIVE</span>
-            </div>
-            <div class="card-body">
-                <div class="qr-section">
-                    <!-- Fake QR Code API for Demo -->
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=http://192.168.1.5:8080"
-                        alt="QR">
-                    <div class="url-box">http://192.168.1.5:8080</div>
-                    <div style="font-size:0.7rem; margin-top:5px; color:#999;">Scan to Download</div>
-                </div>
-                <div class="log-section" id="terminal-logs">
-                    <div>> Initializing http server...</div>
-                    <div>> Listening on :8080</div>
-                    <div>> Firewall punched successfully.</div>
-                    <div>> Waiting for peers...</div>
-                </div>
-            </div>
-            <button class="btn-stop" onclick="stopServer()">STOP SERVER</button>
+    <!-- 1. SIDEBAR -->
+    <nav class="sidebar">
+        <div class="brand">
+            <span>⚡</span> GODROP
         </div>
-    </div>
 
-    <!-- LOGIC -->
+        <div class="nav-header">Workspace</div>
+        <div class="nav-item active">📁 All Files</div>
+        <div class="nav-item">📸 Photos</div>
+        <div class="nav-item">📄 Documents</div>
+
+        <div class="nav-header">Tools</div>
+        <div class="nav-item">📋 Clipboard Sync</div>
+        <div class="nav-item">🔐 Credentials</div>
+
+        <div class="user-profile">
+            <div class="avatar">AD</div>
+            <div>
+                <div style="font-weight:600; font-size:0.9rem;">Alex Developer</div>
+                <div style="font-size:0.75rem; color: var(--accent);">Pro Workspace</div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 2. MAIN CONTENT -->
+    <main class="explorer">
+        <div class="top-bar">
+            <div class="breadcrumbs">My PC / <span>Downloads</span></div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">16 Items selected</div>
+        </div>
+
+        <div class="file-grid" id="grid">
+            <!-- JS Injected -->
+        </div>
+    </main>
+
+    <!-- 3. PREMIUM CONTROL PANEL -->
+    <aside class="config-panel">
+
+        <!-- Connection Mode Toggle -->
+        <div class="panel-header" style="margin-top:0;">Connectivity</div>
+        <div class="toggle-container">
+            <div class="toggle-btn active" id="mode-lan" onclick="setMode('lan')">Local LAN</div>
+            <div class="toggle-btn" id="mode-cloud" onclick="setMode('cloud')">Cloud Tunnel</div>
+        </div>
+
+        <!-- Operation Toggle -->
+        <div class="toggle-container" style="background:transparent; border:1px solid var(--border); padding:2px;">
+            <div class="toggle-btn active" id="op-send" onclick="setOp('send')">Send Files</div>
+            <div class="toggle-btn" id="op-receive" onclick="setOp('receive')">Receive</div>
+        </div>
+
+        <!-- Dynamic Content -->
+        <div class="panel-header">
+            <span id="content-title">Selected Files</span>
+            <span id="content-count" style="color:var(--accent)">0</span>
+        </div>
+
+        <div class="content-box" id="dynamic-content">
+            <!-- Will be populated by JS -->
+            <div style="text-align:center; color:var(--text-muted); padding-top:40px;">No files selected</div>
+        </div>
+
+        <!-- Constraints -->
+        <div class="panel-header">Constraints & Security</div>
+
+        <div class="input-group">
+            <label style="margin-bottom:6px; display:block;">Access Password</label>
+            <input type="password" class="input-ui" placeholder="Optional protection">
+        </div>
+
+        <div class="input-group row-2">
+            <div>
+                <label style="margin-bottom:6px; display:block;">Port</label>
+                <input type="number" class="input-ui" value="8080" id="port-input">
+            </div>
+            <div>
+                <label style="margin-bottom:6px; display:block;">Time Limit</label>
+                <select class="input-ui">
+                    <option>10 min</option>
+                    <option>1 hour</option>
+                    <option>Unlimited</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label style="margin-bottom:6px; display:block;">Max Downloads</label>
+            <input type="number" class="input-ui" value="1">
+        </div>
+
+        <!-- Launch -->
+        <div class="server-status">
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Server Endpoint</div>
+            <div class="url-text" id="url-preview">http://192.168.1.5:8080</div>
+        </div>
+
+        <button class="btn-primary" id="btn-action">Start Local Server</button>
+
+    </aside>
+
     <script>
-        // --- 1. MOCK DATA ---
-        const fileSystem = {
-            'root': [
-                { name: 'Downloads', type: 'folder' },
-                { name: 'Documents', type: 'folder' },
-                { name: 'Pictures', type: 'folder' },
-                { name: 'Music', type: 'folder' },
-                { name: 'resume.pdf', type: 'file' },
-            ],
-            'Downloads': [
-                { name: 'installer.exe', type: 'file' },
-                { name: 'archive.zip', type: 'file' },
-            ],
-            'Documents': [
-                { name: 'Project_Alpha', type: 'folder' },
-                { name: 'budget.xlsx', type: 'file' },
-                { name: 'notes.txt', type: 'file' },
-            ],
-            'Pictures': [
-                { name: 'vacation.jpg', type: 'file' },
-                { name: 'meme.png', type: 'file' },
-            ],
-            'Music': [
-                { name: 'song.mp3', type: 'file' }
-            ],
-            'Project_Alpha': [
-                { name: 'spec.docx', type: 'file' }
-            ]
+        // --- MOCK DATA ---
+        const files = [
+            { name: "Q4_Report.pdf", icon: "📄" },
+            { name: "Design_Assets", icon: "📁" },
+            { name: "vacation.mov", icon: "🎥" },
+            { name: "main.go", icon: "⚙️" },
+            { name: "config.json", icon: "⚙️" },
+            { name: "logo_v2.png", icon: "🖼️" },
+            { name: "Client_Backup", icon: "📦" },
+            { name: "notes.txt", icon: "📝" },
+            { name: "index.html", icon: "🌐" },
+            { name: "styles.css", icon: "🎨" }
+        ];
+
+        let state = {
+            mode: 'lan', // 'lan' | 'cloud'
+            op: 'send',  // 'send' | 'receive'
+            selected: []
         };
 
-        // --- 2. STATE ---
-        let currentPath = 'root';
-        let selectedFiles = [];
-        let logInterval = null;
-
-        // --- 3. RENDER FUNCTIONS ---
-        const grid = document.getElementById('file-grid');
-        const pathDisplay = document.getElementById('path-display');
-        const selectionList = document.getElementById('selection-list');
-
-        function renderFiles() {
-            grid.innerHTML = '';
-            pathDisplay.value = currentPath === 'root' ? 'My PC/' : `My PC/${currentPath}/`;
-
-            const files = fileSystem[currentPath] || [];
-
-            if (files.length === 0) {
-                grid.innerHTML = '<div style="color:#999; width:100%;">Folder is empty</div>';
-                return;
-            }
-
-            files.forEach(file => {
-                const el = document.createElement('div');
-                el.className = 'file-item';
-                // Check if selected
-                if (selectedFiles.includes(file.name)) el.classList.add('selected');
-
-                // Icons
-                const icon = file.type === 'folder' ? '📁' :
-                    file.name.endsWith('pdf') ? '📄' :
-                        file.name.endsWith('jpg') ? '🖼️' :
-                            file.name.endsWith('png') ? '🖼️' :
-                                file.name.endsWith('mp3') ? '🎵' : '📦';
-
-                el.innerHTML = `<div class="file-icon">${icon}</div><div class="file-name">${file.name}</div>`;
-
-                // Click to Select
-                el.onclick = (e) => {
-                    e.stopPropagation(); // Prevent double click interference
-                    toggleSelection(file.name, el);
-                };
-
-                // Double Click to Navigate (Folders only)
-                el.ondblclick = () => {
-                    if (file.type === 'folder') {
-                        currentPath = file.name;
-                        renderFiles();
-                    }
-                };
-
-                grid.appendChild(el);
-            });
-        }
-
-        function toggleSelection(fileName, domElement) {
-            // Simple toggle logic
-            if (selectedFiles.includes(fileName)) {
-                selectedFiles = selectedFiles.filter(f => f !== fileName);
-                domElement.classList.remove('selected');
-            } else {
-                selectedFiles.push(fileName);
-                domElement.classList.add('selected');
-            }
-            renderSelectionPanel();
-        }
-
-        function renderSelectionPanel() {
-            selectionList.innerHTML = '';
-            if (selectedFiles.length === 0) {
-                selectionList.innerHTML = '<div style="text-align:center; color:#999; font-size:0.8rem; margin-top:20px;">Select files from the grid</div>';
-                return;
-            }
-
-            selectedFiles.forEach(f => {
-                const tag = document.createElement('div');
-                tag.className = 'selected-tag';
-                tag.innerHTML = `<span>${f}</span><span style="color:red; cursor:pointer;" onclick="toggleSelection('${f}', document.querySelector('.selected'))">×</span>`;
-                selectionList.appendChild(tag);
-            });
-        }
-
-        // --- 4. NAVIGATION LOGIC ---
-        function loadPath(path) {
-            currentPath = path;
-            renderFiles();
-        }
-
-        function goUp() {
-            // Very basic "up" logic for demo
-            if (currentPath !== 'root') currentPath = 'root';
-            renderFiles();
-        }
-
-        // --- 5. SERVER SIMULATION ---
-        function startServer() {
-            if (selectedFiles.length === 0) {
-                alert("Please select at least one file first!");
-                return;
-            }
-
-            // Show Overlay
-            document.getElementById('server-overlay').style.display = 'flex';
-
-            // Simulate Logs
-            const terminal = document.getElementById('terminal-logs');
-            const messages = [
-                "Serving " + selectedFiles.length + " files...",
-                "Generating zip stream...",
-                "Connection accepted from 192.168.1.12",
-                "Request: GET /download/pack.zip",
-                "Sending bytes... [20%]",
-                "Sending bytes... [45%]",
-                "Sending bytes... [80%]",
-                "Transfer Complete!",
-                "Client disconnected."
-            ];
-
-            let i = 0;
-            logInterval = setInterval(() => {
-                if (i < messages.length) {
-                    const div = document.createElement('div');
-                    div.style.color = i % 2 === 0 ? '#2aa198' : '#839496';
-                    div.innerText = "> " + messages[i];
-                    terminal.appendChild(div);
-                    terminal.scrollTop = terminal.scrollHeight;
-                    i++;
-                }
-            }, 1500);
-        }
-
-        function stopServer() {
-            document.getElementById('server-overlay').style.display = 'none';
-            clearInterval(logInterval);
-            document.getElementById('terminal-logs').innerHTML =
-                '<div>> Initializing http server...</div><div>> Listening on :8080</div>';
-        }
-
         // --- INIT ---
-        renderFiles();
+        const grid = document.getElementById('grid');
+        const contentBox = document.getElementById('dynamic-content');
+
+        // Render Grid
+        files.forEach(f => {
+            const card = document.createElement('div');
+            card.className = 'file-card';
+            card.innerHTML = `
+                <div class="icon-large">${f.icon}</div>
+                <div class="file-name">${f.name}</div>
+            `;
+            card.onclick = () => toggleSelect(f.name, card);
+            grid.appendChild(card);
+        });
+
+        // --- LOGIC ---
+        function toggleSelect(name, card) {
+            // Cannot select files in Receive mode
+            if (state.op === 'receive') return;
+
+            if (state.selected.includes(name)) {
+                state.selected = state.selected.filter(n => n !== name);
+                card.classList.remove('selected');
+            } else {
+                state.selected.push(name);
+                card.classList.add('selected');
+            }
+            updateContentBox();
+        }
+
+        function updateContentBox() {
+            // Handle Receive Mode View
+            if (state.op === 'receive') {
+                contentBox.innerHTML = `
+                    <div class="dropzone-visual">
+                        <div style="font-size:2rem; margin-bottom:10px;">📥</div>
+                        <div style="font-weight:600; color:var(--text-primary)">/Downloads/Godrop</div>
+                        <div style="font-size:0.75rem; margin-top:5px; cursor:pointer; color:var(--accent)">Change Location</div>
+                    </div>
+                `;
+                document.getElementById('content-title').innerText = "Save Location";
+                document.getElementById('content-count').innerText = "";
+                return;
+            }
+
+            // Handle Send Mode View
+            document.getElementById('content-title').innerText = "Selected Files";
+            document.getElementById('content-count').innerText = state.selected.length;
+
+            if (state.selected.length === 0) {
+                contentBox.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding-top:40px;">No files selected</div>';
+                return;
+            }
+
+            contentBox.innerHTML = '';
+            state.selected.forEach(name => {
+                const row = document.createElement('div');
+                row.className = 'selected-row';
+                row.innerHTML = `
+                    <span>${name}</span>
+                    <span class="remove-x" onclick="removeFile('${name}')">×</span>
+                `;
+                contentBox.appendChild(row);
+            });
+        }
+
+        // Wrapper to remove file from the right panel
+        function removeFile(name) {
+            // Find the grid card and deselect it
+            const cards = document.querySelectorAll('.file-card');
+            cards.forEach(c => {
+                if (c.innerText.includes(name)) c.classList.remove('selected');
+            });
+            toggleSelect(name, { classList: { remove: () => { } } }); // Hacky mock trigger
+        }
+
+        // --- TOGGLES ---
+        function setMode(m) {
+            state.mode = m;
+            document.getElementById('mode-lan').classList.toggle('active', m === 'lan');
+
+            const cloudBtn = document.getElementById('mode-cloud');
+            cloudBtn.classList.toggle('active', m === 'cloud');
+            cloudBtn.classList.toggle('cloud-active', m === 'cloud');
+
+            // Disable Port if Cloud
+            const portInput = document.getElementById('port-input');
+            if (m === 'cloud') {
+                portInput.disabled = true;
+                portInput.style.opacity = '0.5';
+            } else {
+                portInput.disabled = false;
+                portInput.style.opacity = '1';
+            }
+
+            updateUI();
+        }
+
+        function setOp(o) {
+            state.op = o;
+            document.getElementById('op-send').classList.toggle('active', o === 'send');
+            document.getElementById('op-receive').classList.toggle('active', o === 'receive');
+
+            // Clear selection visual in grid if receiving
+            const cards = document.querySelectorAll('.file-card');
+            cards.forEach(c => {
+                if (o === 'receive') c.style.opacity = '0.5';
+                else c.style.opacity = '1';
+            });
+
+            updateContentBox();
+            updateUI();
+        }
+
+        function updateUI() {
+            const url = document.getElementById('url-preview');
+            const btn = document.getElementById('btn-action');
+            const port = document.getElementById('port-input').value;
+
+            if (state.mode === 'lan') {
+                url.innerText = `http://192.168.1.5:${port}`;
+                btn.innerText = state.op === 'send' ? 'Start Local Server' : 'Open Local Dropzone';
+            } else {
+                url.innerText = `https://godrop.io/u/alex`;
+                btn.innerText = state.op === 'send' ? 'Create Magic Link' : 'Open Secure Tunnel';
+            }
+        }
 
     </script>
 </body>
