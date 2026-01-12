@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/skip2/go-qrcode"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -21,12 +22,15 @@ import (
 
 // App struct
 type App struct {
-	ctx           context.Context
-	server        *http.Server
-	serverMutex   sync.Mutex
-	activeFiles   []string
-	isTempArchive bool
-	archivePath   string
+	ctx              context.Context
+	server           *http.Server
+	serverMutex      sync.Mutex
+	activeFiles      []string
+	isTempArchive    bool
+	archivePath      string
+	downloadLimit    int
+	currentDownloads int
+	expiryTime       time.Time
 }
 
 // FileEntry represents a file in the explorer
@@ -126,7 +130,7 @@ func (a *App) ReadDir(path string) ([]FileEntry, error) {
 // --- SERVER LOGIC ---
 
 // StartServer starts the Godrop HTTP server
-func (a *App) StartServer(port string, password string, files []string) (ServerResponse, error) {
+func (a *App) StartServer(port string, password string, files []string, limit int, timeout int) (ServerResponse, error) {
 	a.serverMutex.Lock()
 	defer a.serverMutex.Unlock()
 
@@ -176,6 +180,23 @@ func (a *App) StartServer(port string, password string, files []string) (ServerR
 	}
 	fileSize = info.Size()
 
+	// Initialize Server State
+	a.downloadLimit = limit
+	a.currentDownloads = 0
+	if timeout > 0 {
+		a.expiryTime = time.Now().Add(time.Duration(timeout) * time.Minute)
+		// Auto-shutdown on timeout
+		go func() {
+			time.Sleep(time.Duration(timeout) * time.Minute)
+			if a.server != nil {
+				wailsRuntime.EventsEmit(a.ctx, "server_error", "Timeout Reached. Server Stopping.")
+				a.StopServer()
+			}
+		}()
+	} else {
+		a.expiryTime = time.Time{}
+	}
+
 	// Setup Server Handler
 	mux := http.NewServeMux()
 
@@ -198,16 +219,33 @@ func (a *App) StartServer(port string, password string, files []string) (ServerR
 
 	// API: Download
 	mux.HandleFunc("/download", func(w http.ResponseWriter, r *http.Request) {
-		// Basic Auth check if password set
-		// (In a real app, we'd check a token or cookie, but for simplicity we rely on the flow)
+		a.serverMutex.Lock()
+		if !a.expiryTime.IsZero() && time.Now().After(a.expiryTime) {
+			a.serverMutex.Unlock()
+			http.Error(w, "Link Expired", http.StatusGone)
+			return
+		}
+		if a.downloadLimit > 0 && a.currentDownloads >= a.downloadLimit {
+			a.serverMutex.Unlock()
+			http.Error(w, "Limit Exceeded", http.StatusGone)
+			return
+		}
+		a.currentDownloads++
+		current := a.currentDownloads
+		a.serverMutex.Unlock()
 
 		w.Header().Set("Content-Disposition", "attachment; filename="+fileName)
 		http.ServeFile(w, r, targetFile)
 
-		// Auto-shutdown trigger after download (optional, maybe keep it running in GUI mode?)
-		// Let's notify frontend instead of hard killing, or let user decide.
-		// For now, we'll emit an event
 		wailsRuntime.EventsEmit(a.ctx, "download_started", map[string]string{"ip": r.RemoteAddr})
+
+		// Auto-shutdown if limit reached
+		if a.downloadLimit > 0 && current >= a.downloadLimit {
+			go func() {
+				time.Sleep(2 * time.Second) // allow transfer to start/finish packet
+				a.StopServer()
+			}()
+		}
 	})
 
 	// Landing Page (Simple HTML)

@@ -10,8 +10,8 @@ export function ReadDir(arg1) {
   return window['go']['main']['App']['ReadDir'](arg1);
 }
 
-export function StartServer(arg1, arg2, arg3) {
-  return window['go']['main']['App']['StartServer'](arg1, arg2, arg3);
+export function StartServer(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['StartServer'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function StopServer() {

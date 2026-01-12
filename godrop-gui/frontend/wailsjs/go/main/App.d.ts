@@ -6,6 +6,6 @@ export function GetHomeDir():Promise<string>;
 
 export function ReadDir(arg1:string):Promise<Array<main.FileEntry>>;
 
-export function StartServer(arg1:string,arg2:string,arg3:Array<string>):Promise<main.ServerResponse>;
+export function StartServer(arg1:string,arg2:string,arg3:Array<string>,arg4:number,arg5:number):Promise<main.ServerResponse>;
 
 export function StopServer():Promise<void>;

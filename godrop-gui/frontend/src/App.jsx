@@ -11,6 +11,8 @@ function App() {
     const [logs, setLogs] = useState([]);
     const [password, setPassword] = useState("");
     const [port, setPort] = useState("8080");
+    const [limit, setLimit] = useState(1);
+    const [timeout, setTimeoutVal] = useState(10);
     const [isServerRunning, setIsServerRunning] = useState(false);
 
     // Initial Load
@@ -86,7 +88,7 @@ function App() {
         if (selectedFiles.length === 0) return;
         setLogs([`INITIALIZING SERVER ON PORT ${port}...`]);
         try {
-            const info = await StartServer(port, password, selectedFiles);
+            const info = await StartServer(port, password, selectedFiles, limit, timeout);
             setServerInfo(info);
             setIsServerRunning(true);
             addLog(`HOSTING ${selectedFiles.length} FILE(S)`);
@@ -164,6 +166,17 @@ function App() {
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                     />
+                </div>
+
+                <div className="toggle-row" style={{ display: 'flex', gap: 10 }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Limit (0=Unlim)</label>
+                        <input type="number" className="form-input" min="0" value={limit} onChange={e => setLimit(parseInt(e.target.value) || 0)} />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                        <label className="form-label">Time (Min)</label>
+                        <input type="number" className="form-input" min="0" value={timeout} onChange={e => setTimeoutVal(parseInt(e.target.value) || 0)} />
+                    </div>
                 </div>
 
                 <div className="form-group">
