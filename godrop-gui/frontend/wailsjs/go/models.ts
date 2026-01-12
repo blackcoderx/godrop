@@ -1,4 +1,4 @@
-export namespace main {
+export namespace backend {
 	
 	export class FileEntry {
 	    name: string;
@@ -20,6 +20,11 @@ export namespace main {
 	        this.type = source["type"];
 	    }
 	}
+
+}
+
+export namespace server {
+	
 	export class ServerResponse {
 	    ip: string;
 	    port: string;
