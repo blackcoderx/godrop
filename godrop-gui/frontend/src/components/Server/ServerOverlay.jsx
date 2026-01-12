@@ -6,24 +6,14 @@ export const ServerOverlay = ({
     if (!isServerRunning || !serverInfo) return null;
 
     return (
-        <div className="server-overlay">
+        <div className={`server-overlay ${mode === 'receive' ? 'mini' : ''}`}>
             <div className="server-card vibrant-anim">
                 <div className="card-header">
                     <span className="live-badge">● LIVE</span>
                     <span className="mode-badge">{mode.toUpperCase()}</span>
                 </div>
 
-                <div className="card-body">
-                    <div className="qr-section">
-                        <div className="qr-frame">
-                            <img src={serverInfo.qrCode} className="qr-image" alt="QR" />
-                        </div>
-                        <div className="url-display">
-                            <code>{serverInfo.fullUrl}</code>
-                        </div>
-                        <p className="help-text">Scan with your phone to connect</p>
-                    </div>
-
+                <div className="card-body-mini">
                     <div className="console-section">
                         <div className="console-header">SYSTEM LOGS</div>
                         <div className="log-scroll">

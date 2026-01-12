@@ -582,3 +582,157 @@ body {
     max-height: 200px;
     overflow-y: auto;
 }
+/* --- SIDEBAR QR --- */
+.sidebar-qr-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background: #fdfdfd;
+    border: 2px solid var(--text-main);
+    border-radius: 20px;
+    margin: 15px 0;
+    animation: slideUp 0.3s ease-out;
+}
+
+.sidebar-qr-frame {
+    background: white;
+    padding: 8px;
+    border: 2px solid var(--text-main);
+    border-radius: 12px;
+}
+
+.sidebar-qr-image {
+    width: 130px;
+    height: 130px;
+    display: block;
+}
+
+.sidebar-url-box {
+    background: var(--bg-main);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    word-break: break-all;
+    border: 1px solid var(--border);
+    max-width: 100%;
+}
+
+/* --- MINI OVERLAY FOR RECEIVE --- */
+.server-overlay.mini {
+    background: transparent;
+    backdrop-filter: none;
+    pointer-events: none;
+}
+
+.server-overlay.mini .server-card {
+    pointer-events: auto;
+    position: absolute;
+    bottom: 20px;
+    right: 320px;
+    width: 350px;
+    box-shadow: 10px 10px 0 var(--text-main);
+    padding: 20px;
+}
+
+.card-body-mini {
+    display: block;
+}
+
+.server-overlay.mini .console-section {
+    height: 120px;
+}
+
+/* --- RECEIVED FILES VIEW --- */
+.received-files-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 30px;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.received-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+    overflow-y: auto;
+}
+
+.received-item {
+    background: white;
+    border: 2px solid var(--text-main);
+    border-radius: 15px;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 4px 4px 0 var(--text-main);
+    transition: var(--transition);
+}
+
+.received-item:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--text-main);
+}
+
+.file-info-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.file-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.file-details .file-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
+.file-details .file-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.file-status-badge {
+    background: #E8F5E9;
+    color: #2E7D32;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid #2E7D32;
+}
+
+/* --- SIDEBAR SESSION INFO --- */
+.sidebar-session-info {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.sidebar-progress-section {
+    background: white;
+    border: 2px solid var(--text-main);
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 4px 4px 0 var(--text-main);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: var(--accent);
+    letter-spacing: 1px;
+}

@@ -1,5 +1,6 @@
 import { FileSelection } from './FileSelection';
 import { SelectDirectory, SetSystemClipboard } from '../../../wailsjs/go/main/App';
+import { RetroProgressBar } from '../Common/RetroProgressBar';
 
 export const ConfigPanel = ({
     mode,
@@ -10,7 +11,10 @@ export const ConfigPanel = ({
     timeout, setTimeoutVal,
     port, setPort,
     isServerRunning,
-    onStartServer
+    serverInfo,
+    progress,
+    onStartServer,
+    onStopServer
 }) => {
     const basename = (path) => path.split(/[/\\]/).pop();
 
@@ -77,12 +81,35 @@ export const ConfigPanel = ({
                     </div>
                 </div>
 
+                {isServerRunning && serverInfo && (
+                    <div className="sidebar-session-info animated slideInUp">
+                        <div className="sidebar-qr-container">
+                            <div className="sidebar-qr-frame">
+                                <img src={serverInfo.qrCode} alt="QR Code" className="sidebar-qr-image" />
+                            </div>
+                            <div className="sidebar-url-box">
+                                <code>{serverInfo.fullUrl}</code>
+                            </div>
+                        </div>
+
+                        {progress && (
+                            <div className="sidebar-progress-section">
+                                <div className="progress-header">
+                                    <span>TRANSFERRING...</span>
+                                    <span>{progress.percent}%</span>
+                                </div>
+                                <RetroProgressBar percent={progress.percent} />
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <button
-                    className={`btn-primary ${isServerRunning ? 'pulse' : ''}`}
-                    onClick={onStartServer}
-                    disabled={isServerRunning || (mode === 'send' && selectedFiles.length === 0)}
+                    className={`btn-primary ${isServerRunning ? 'stop-btn pulse' : ''}`}
+                    onClick={isServerRunning ? onStopServer : onStartServer}
+                    disabled={!isServerRunning && (mode === 'send' && selectedFiles.length === 0)}
                 >
-                    {isServerRunning ? '🚀 LIVE' : 'START SERVER'}
+                    {isServerRunning ? 'STOP SERVER' : 'START SERVER'}
                 </button>
             </div>
         </aside>

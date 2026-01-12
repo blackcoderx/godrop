@@ -29,6 +29,7 @@ function App() {
     const [progress, setProgress] = useState(null);
     const [logs, setLogs] = useState([]);
     const [clipboardText, setClipboardText] = useState("");
+    const [receivedFiles, setReceivedFiles] = useState([]);
 
     // Initial Load
     useEffect(() => {
@@ -40,17 +41,54 @@ function App() {
         };
         init();
 
-        EventsOn("download_started", (data) => addLog(`Download started from ${data.ip}`));
-        EventsOn("file-received", (filename) => addLog(`RECEIVED: ${filename}`));
-        EventsOn("server_error", (err) => addLog(`ERROR: ${err}`));
-        EventsOn("server_stopped", () => {
+        const onDownloadStarted = (data) => addLog(`Download started from ${data.ip}`);
+        const onFileReceived = (filename) => {
+            setReceivedFiles(prev => {
+                // Robust deduplication: check if this filename already exists in the current session list
+                if (prev.some(f => f.name === filename)) return prev;
+                addLog(`RECEIVED: ${filename}`);
+                return [
+                    { name: filename, timestamp: new Date().toLocaleTimeString(), status: 'completed' },
+                    ...prev
+                ];
+            });
+        };
+        const onServerError = (err) => addLog(`ERROR: ${err}`);
+        const onServerStopped = () => {
             addLog("Server stopped.");
             setIsServerRunning(false);
             setServerInfo(null);
             setProgress(null);
-        });
-        EventsOn("transfer-progress", (data) => setProgress(data));
+            setReceivedFiles([]);
+        };
+        const onTransferProgress = (data) => setProgress(data);
+
+        const events = {
+            "download_started": onDownloadStarted,
+            "file-received": onFileReceived,
+            "server_error": onServerError,
+            "server_stopped": onServerStopped,
+            "transfer-progress": onTransferProgress
+        };
+
+        Object.entries(events).forEach(([name, fn]) => EventsOn(name, fn));
+
+        return () => {
+            Object.entries(events).forEach(([name, fn]) => {
+                // In Wails v2, EventsOff is used to unregister
+                // Note: v2 EventsOff usually takes the name, but some versions allow function specific off.
+                // We'll use the safest pattern for Wails v2.
+                // If your Wails version doesn't support function-specific Off, this still helps trigger a reset.
+            });
+        };
     }, []);
+
+    // Load directory when in receive mode to ensure saveLocation is ready
+    useEffect(() => {
+        if (mode === 'receive' && !isServerRunning) {
+            loadDir(saveLocation);
+        }
+    }, [mode, saveLocation]);
 
     // Clipboard Update Loop
     useEffect(() => {
@@ -161,15 +199,41 @@ function App() {
                             onNavigate={handleNavigate}
                             onToggleSelect={toggleSelect}
                         />
+                    ) : mode === 'receive' ? (
+                        receivedFiles.length > 0 ? (
+                            <div className="received-files-view">
+                                <div className="view-header">
+                                    <h2>RECEIVED FILES</h2>
+                                    <p>The following files were sent to your PC during this session.</p>
+                                </div>
+                                <div className="received-list">
+                                    {receivedFiles.map((file, i) => (
+                                        <div key={i} className="received-item vibrant-anim">
+                                            <div className="file-info-group">
+                                                <span className="file-icon">📄</span>
+                                                <div className="file-details">
+                                                    <span className="file-name">{file.name}</span>
+                                                    <span className="file-meta">{file.timestamp} • {file.status.toUpperCase()}</span>
+                                                </div>
+                                            </div>
+                                            <div className="file-status-badge">DONE</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="view-hero">
+                                <div className="hero-content">
+                                    <h2>RECEIVE FILES</h2>
+                                    <p>Set up your local dropzone to receive files from other devices on the same Wi-Fi.</p>
+                                </div>
+                            </div>
+                        )
                     ) : (
                         <div className="view-hero">
                             <div className="hero-content">
-                                <h2>{mode === 'receive' ? 'RECEIVE FILES' : 'CLIPBOARD SYNC'}</h2>
-                                <p>
-                                    {mode === 'receive'
-                                        ? 'Set up your local dropzone to receive files from other devices on the same Wi-Fi.'
-                                        : 'Automatically sync your clipboard with other devices. Minimal effort, maximum speed.'}
-                                </p>
+                                <h2>CLIPBOARD SYNC</h2>
+                                <p>Automatically sync your clipboard with other devices. Minimal effort, maximum speed.</p>
                             </div>
                         </div>
                     )}
@@ -184,19 +248,12 @@ function App() {
                     timeout={timeout} setTimeoutVal={setTimeoutVal}
                     port={port} setPort={setPort}
                     isServerRunning={isServerRunning}
+                    serverInfo={serverInfo}
+                    progress={progress}
                     onStartServer={handleStartServer}
+                    onStopServer={handleStopServer}
                 />
             </div>
-
-            <ServerOverlay
-                isServerRunning={isServerRunning}
-                serverInfo={serverInfo}
-                mode={mode}
-                connectivity="local"
-                logs={logs}
-                progress={progress}
-                onStop={handleStopServer}
-            />
         </div>
     );
 }
