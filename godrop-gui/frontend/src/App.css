@@ -337,3 +337,65 @@ body {
     cursor: pointer;
     border-radius: 4px;
 }
+
+/* --- RECEIVE MODE --- */
+.mode-toggle {
+    display: flex;
+    margin-bottom: 20px;
+    background: #dfd8c2;
+    border-radius: 4px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.mode-toggle button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--text-heading);
+    border-radius: 4px;
+    transition: 0.2s;
+    font-family: var(--font-ui);
+}
+
+.mode-toggle button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.mode-toggle button.active {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dropzone-info {
+    border: 2px dashed var(--accent);
+    padding: 20px;
+    border-radius: 6px;
+    background: rgba(42, 161, 152, 0.1);
+    text-align: center;
+    color: var(--text-heading);
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-small {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--text-main);
+    font-family: var(--font-mono);
+}
+
+.btn-small:hover {
+    background: #dfd8c2;
+}

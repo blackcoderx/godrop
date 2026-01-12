@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import { GetHomeDir, ReadDir, StartServer, StopServer } from '../wailsjs/go/main/App';
+import { GetHomeDir, ReadDir, StartServer, StopServer, StartReceiveServer, GetDefaultSaveDir, SelectDirectory } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 
 function App() {
@@ -15,18 +15,29 @@ function App() {
     const [timeout, setTimeoutVal] = useState(10);
     const [isServerRunning, setIsServerRunning] = useState(false);
 
+    const [mode, setMode] = useState('send'); // 'send' | 'receive'
+    const [saveLocation, setSaveLocation] = useState("");
+
     // Initial Load
     useEffect(() => {
         const init = async () => {
             const home = await GetHomeDir();
             setCurrentPath(home);
             loadDir(home);
+
+            const defaultSave = await GetDefaultSaveDir();
+            setSaveLocation(defaultSave);
         };
         init();
 
         // Listen for server events
         EventsOn("download_started", (data) => {
             addLog(`Download started from ${data.ip}`);
+        });
+
+        EventsOn("file-received", (filename) => {
+            addLog(`RECEIVED FILE: ${filename}`);
+            // Optional: Notification or flash
         });
 
         EventsOn("server_error", (err) => {
@@ -85,13 +96,21 @@ function App() {
     };
 
     const handleStartServer = async () => {
-        if (selectedFiles.length === 0) return;
-        setLogs([`INITIALIZING SERVER ON PORT ${port}...`]);
+        if (mode === 'send' && selectedFiles.length === 0) return;
+
+        setLogs([`INITIALIZING ${mode.toUpperCase()} SERVER ON PORT ${port}...`]);
         try {
-            const info = await StartServer(port, password, selectedFiles, limit, timeout);
+            let info;
+            if (mode === 'send') {
+                info = await StartServer(port, password, selectedFiles, limit, timeout);
+                addLog(`HOSTING ${selectedFiles.length} FILE(S)`);
+            } else {
+                info = await StartReceiveServer(port, saveLocation);
+                addLog(`DROPZONE ACTIVE. Saving to: ${saveLocation}`);
+            }
+
             setServerInfo(info);
             setIsServerRunning(true);
-            addLog(`HOSTING ${selectedFiles.length} FILE(S)`);
             addLog(`LIVE AT: ${info.fullUrl}`);
         } catch (err) {
             addLog(`FAILED: ${err}`);
@@ -143,19 +162,42 @@ function App() {
 
             {/* Config Panel */}
             <aside className="config-panel">
-                <div className="panel-title">Preparation</div>
-                <label className="form-label">Selected Files ({selectedFiles.length})</label>
-                <div className="selection-list">
-                    {selectedFiles.length === 0 && <div style={{ textAlign: 'center', color: '#999', marginTop: 10 }}>Select files...</div>}
-                    {selectedFiles.map(path => (
-                        <div key={path} className="selected-tag">
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
-                                {path.split(/[/\\]/).pop()}
-                            </span>
-                            <span style={{ color: 'red', cursor: 'pointer' }} onClick={() => setSelectedFiles(selectedFiles.filter(p => p !== path))}>×</span>
-                        </div>
-                    ))}
+                <div className="panel-title">Mode: {mode.toUpperCase()}</div>
+
+                <div className="mode-toggle">
+                    <button className={mode === 'send' ? 'active' : ''} onClick={() => setMode('send')}>SEND</button>
+                    <button className={mode === 'receive' ? 'active' : ''} onClick={() => setMode('receive')}>RECEIVE</button>
                 </div>
+
+                {mode === 'send' ? (
+                    <>
+                        <label className="form-label">Selected Files ({selectedFiles.length})</label>
+                        <div className="selection-list">
+                            {selectedFiles.length === 0 && <div style={{ textAlign: 'center', color: '#999', marginTop: 10 }}>Select files...</div>}
+                            {selectedFiles.map(path => (
+                                <div key={path} className="selected-tag">
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }}>
+                                        {path.split(/[/\\]/).pop()}
+                                    </span>
+                                    <span style={{ color: 'red', cursor: 'pointer' }} onClick={() => setSelectedFiles(selectedFiles.filter(p => p !== path))}>×</span>
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <label className="form-label">Save Location</label>
+                        <div className="dropzone-info">
+                            <div style={{ fontSize: '0.8rem', wordBreak: 'break-all', marginBottom: 10 }}>{saveLocation || "Not set"}</div>
+                            <button className="btn-small" onClick={async () => {
+                                const dir = await SelectDirectory();
+                                if (dir) setSaveLocation(dir);
+                            }}>Change...</button>
+                        </div>
+                    </>
+                )}
+
+                <hr style={{ width: '100%', borderColor: 'var(--border)', opacity: 0.3, margin: '20px 0' }} />
 
                 <div className="form-group">
                     <label className="form-label">Password (Optional)</label>
@@ -168,16 +210,18 @@ function App() {
                     />
                 </div>
 
-                <div className="toggle-row" style={{ display: 'flex', gap: 10 }}>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label className="form-label">Limit (0=Unlim)</label>
-                        <input type="number" className="form-input" min="0" value={limit} onChange={e => setLimit(parseInt(e.target.value) || 0)} />
+                {mode === 'send' && (
+                    <div className="toggle-row" style={{ display: 'flex', gap: 10 }}>
+                        <div className="form-group" style={{ flex: 1 }}>
+                            <label className="form-label">Limit (0=Unlim)</label>
+                            <input type="number" className="form-input" min="0" value={limit} onChange={e => setLimit(parseInt(e.target.value) || 0)} />
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                            <label className="form-label">Time (Min)</label>
+                            <input type="number" className="form-input" min="0" value={timeout} onChange={e => setTimeoutVal(parseInt(e.target.value) || 0)} />
+                        </div>
                     </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label className="form-label">Time (Min)</label>
-                        <input type="number" className="form-input" min="0" value={timeout} onChange={e => setTimeoutVal(parseInt(e.target.value) || 0)} />
-                    </div>
-                </div>
+                )}
 
                 <div className="form-group">
                     <label className="form-label">Port</label>
@@ -192,9 +236,9 @@ function App() {
                 <button
                     className="btn-start"
                     onClick={handleStartServer}
-                    disabled={selectedFiles.length === 0 || isServerRunning}
+                    disabled={mode === 'send' && selectedFiles.length === 0 || isServerRunning}
                 >
-                    START SERVER 🚀
+                    {mode === 'send' ? 'START SENDING 🚀' : 'OPEN DROPZONE 📥'}
                 </button>
             </aside>
 

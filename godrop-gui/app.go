@@ -127,6 +127,26 @@ func (a *App) ReadDir(path string) ([]FileEntry, error) {
 	return files, nil
 }
 
+// GetDefaultSaveDir returns the user's Downloads directory
+func (a *App) GetDefaultSaveDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, "Downloads")
+}
+
+// SelectDirectory opens a dialog to select a directory
+func (a *App) SelectDirectory() (string, error) {
+	selection, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select Save Location",
+	})
+	if err != nil {
+		return "", err
+	}
+	return selection, nil
+}
+
 // --- SERVER LOGIC ---
 
 // StartServer starts the Godrop HTTP server
@@ -293,6 +313,150 @@ func (a *App) StartServer(port string, password string, files []string, limit in
 			wailsRuntime.EventsEmit(a.ctx, "server_error", err.Error())
 		}
 		// Server stopped
+		wailsRuntime.EventsEmit(a.ctx, "server_stopped", true)
+	}()
+
+	return ServerResponse{
+		IP:      ip,
+		Port:    port,
+		FullURL: fullURL,
+		QRCode:  "data:image/png;base64," + toBase64(png),
+	}, nil
+}
+
+// StartReceiveServer starts the Godrop HTTP server in Receive Mode
+func (a *App) StartReceiveServer(port string, saveDir string) (ServerResponse, error) {
+	a.serverMutex.Lock()
+	defer a.serverMutex.Unlock()
+
+	// Stop existing server if running
+	if a.server != nil {
+		a.StopServer()
+	}
+
+	// Ensure save directory exists
+	if _, err := os.Stat(saveDir); os.IsNotExist(err) {
+		return ServerResponse{}, fmt.Errorf("save directory does not exist")
+	}
+
+	mux := http.NewServeMux()
+
+	// 1. GET / - The Upload Page
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		html := `
+		<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+			<title>Godrop - Send File</title>
+			<style>
+				body {
+					font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+					background-color: #fdf6e3;
+					color: #657b83;
+					display: flex;
+					flex-direction: column;
+					align-items: center;
+					justify-content: center;
+					height: 100vh;
+					margin: 0;
+					text-align: center;
+				}
+				.container {
+					background: #eee8d5;
+					padding: 40px;
+					border-radius: 8px;
+					border: 1px solid #93a1a1;
+					box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+				}
+				h1 { color: #cb4b16; margin-bottom: 20px; }
+				input[type="file"] { margin: 20px 0; }
+				button {
+					background-color: #2aa198;
+					color: white;
+					border: none;
+					padding: 12px 24px;
+					border-radius: 4px;
+					font-size: 1rem;
+					cursor: pointer;
+					font-weight: bold;
+				}
+				button:hover { background-color: #268bd2; }
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<h1>Godrop Receiver</h1>
+				<form action="/upload" method="post" enctype="multipart/form-data">
+					<input type="file" name="file" required>
+					<br>
+					<button type="submit">Send File</button>
+				</form>
+			</div>
+		</body>
+		</html>
+		`
+		w.Write([]byte(html))
+	})
+
+	// 2. POST /upload - Handle File
+	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+		// Limit upload size (e.g., 2GB or unlimited) - let's say 10GB max just to be safe
+		r.Body = http.MaxBytesReader(w, r.Body, 10<<30)
+
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			http.Error(w, "File too big or invalid", http.StatusBadRequest)
+			return
+		}
+
+		file, handler, err := r.FormFile("file")
+		if err != nil {
+			http.Error(w, "Error retrieving file", http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		// Create dest file
+		dstPath := filepath.Join(saveDir, handler.Filename)
+		dst, err := os.Create(dstPath)
+		if err != nil {
+			http.Error(w, "Error saving file", http.StatusInternalServerError)
+			return
+		}
+		defer dst.Close()
+
+		// Stream copy
+		if _, err := io.Copy(dst, file); err != nil {
+			http.Error(w, "Error saving file content", http.StatusInternalServerError)
+			return
+		}
+
+		// Notify Frontend
+		wailsRuntime.EventsEmit(a.ctx, "file-received", handler.Filename)
+
+		// Success Page
+		w.Write([]byte(`
+			<h1 style='color:green; font-family:sans-serif; text-align:center;'>File Sent!</h1>
+			<script>setTimeout(() => window.location.href='/', 2000)</script>
+		`))
+	})
+
+	// Setup Server
+	ip := GetOutboundIP()
+	fullURL := fmt.Sprintf("http://%s:%s", ip, port)
+
+	png, err := qrcode.Encode(fullURL, qrcode.Medium, 256)
+	if err != nil {
+		return ServerResponse{}, err
+	}
+
+	a.server = &http.Server{Addr: ":" + port, Handler: mux}
+
+	go func() {
+		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			wailsRuntime.EventsEmit(a.ctx, "server_error", err.Error())
+		}
 		wailsRuntime.EventsEmit(a.ctx, "server_stopped", true)
 	}()
 
