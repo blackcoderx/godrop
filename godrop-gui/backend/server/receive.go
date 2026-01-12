@@ -23,8 +23,7 @@ func StartReceive(core *backend.Core, port string, saveDir string) (ServerRespon
 	RegisterCommonHandlers(mux, core.GetSystemClipboard, core.SetSystemClipboard)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		html := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Godrop - Send File</title><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #fdf6e3; color: #657b83; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; } .container { background: #eee8d5; padding: 40px; border-radius: 8px; border: 1px solid #93a1a1; box-shadow: 0 4px 12px rgba(0,0,0,0.1); } h1 { color: #cb4b16; margin-bottom: 20px; } input[type="file"] { margin: 20px 0; } button { background-color: #2aa198; color: white; border: none; padding: 12px 24px; border-radius: 4px; font-size: 1rem; cursor: pointer; font-weight: bold; } button:hover { background-color: #268bd2; } </style></head><body><div class="container"><h1>Godrop Receiver</h1><form action="/upload" method="post" enctype="multipart/form-data"><input type="file" name="file" required><br><button type="submit">Send File</button></form></div></body></html>`
-		w.Write([]byte(html))
+		w.Write([]byte(GetReceiveTemplate()))
 	})
 
 	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {

@@ -148,14 +148,7 @@ func StartSend(core *backend.Core, port string, password string, files []string,
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		html := `<html><body style="font-family:monospace; background:#111; color:#0f0; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh;"><h1>GODROP DESTINATION</h1><p>File: ` + fileName + `</p><p>Size: ` + backend.FormatSize(fileSize) + `</p><p id="msg"></p>`
-		if password != "" {
-			html += `<input type="password" id="pass" placeholder="Password"><button onclick="verify()">Unlock</button><script>async function verify() { const c = document.getElementById('pass').value; const r = await fetch('/api/verify', {method:'POST', body:JSON.stringify({Code:c})}); const j = await r.json(); if(j.success) window.location.href='/download'; else document.getElementById('msg').innerText = "Access Denied"; }</script>`
-		} else {
-			html += `<button onclick="window.location.href='/download'" style="padding:20px; font-weight:bold; cursor:pointer;">DOWNLOAD NOW</button>`
-		}
-		html += `</body></html>`
-		w.Write([]byte(html))
+		w.Write([]byte(GetSendTemplate(fileName, backend.FormatSize(fileSize), password != "")))
 	})
 
 	ip := backend.GetOutboundIP()
