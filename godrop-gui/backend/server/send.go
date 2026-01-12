@@ -67,6 +67,7 @@ func StartSend(core *backend.Core, port string, password string, files []string,
 			}
 		}()
 	} else {
+		// Infinity Connection
 		core.ExpiryTime = time.Time{}
 	}
 

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import './App.css';
+import logo from './assets/images/godrop-logo.png';
 import { GetHomeDir, ReadDir, StartServer, StopServer, StartReceiveServer, StartClipboardServer, GetDefaultSaveDir, GetSystemClipboard } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 
 // Components
-import { Sidebar } from './components/Layout/Sidebar';
 import { Explorer } from './components/Explorer/Explorer';
 import { ConfigPanel } from './components/Config/ConfigPanel';
 import { ServerOverlay } from './components/Server/ServerOverlay';
@@ -17,9 +17,8 @@ function App() {
 
     // Server State
     const [mode, setMode] = useState('send'); // 'send' | 'receive' | 'clipboard'
-    const [connectivity, setConnectivity] = useState('local'); // 'local' | 'cloud'
     const [password, setPassword] = useState("");
-    const [port, setPort] = useState("8080");
+    const [port, setPort] = useState("1111");
     const [limit, setLimit] = useState(1);
     const [timeout, setTimeoutVal] = useState(10);
     const [saveLocation, setSaveLocation] = useState("");
@@ -101,12 +100,8 @@ function App() {
 
     const handleStartServer = async () => {
         if (mode === 'send' && selectedFiles.length === 0) return;
-        if (connectivity === 'cloud') {
-            alert("Cloud Tunneling is coming soon!");
-            return;
-        }
 
-        setLogs([`INITIALIZING ${mode.toUpperCase()} OVER ${connectivity.toUpperCase()}...`]);
+        setLogs([`INITIALIZING ${mode.toUpperCase()}...`]);
         try {
             let info;
             if (mode === 'send') {
@@ -136,36 +131,68 @@ function App() {
     const addLog = (msg) => setLogs(prev => [...prev, `> ${msg}`]);
 
     return (
-        <div id="app">
-            <Sidebar mode={mode} setMode={setMode} />
+        <div id="app" className="vibrant-retro">
+            <header className="app-header">
+                <div className="brand-group">
+                    <img src={logo} alt="Godrop" className="brand-logo" />
+                    <h1>GODROP</h1>
+                </div>
+                <nav className="tab-nav">
+                    <button className={`tab-item ${mode === 'send' ? 'active' : ''}`} onClick={() => setMode('send')}>
+                        <span className="icon">📤</span> SEND
+                    </button>
+                    <button className={`tab-item ${mode === 'receive' ? 'active' : ''}`} onClick={() => setMode('receive')}>
+                        <span className="icon">📥</span> RECEIVE
+                    </button>
+                    <button className={`tab-item ${mode === 'clipboard' ? 'active' : ''}`} onClick={() => setMode('clipboard')}>
+                        <span className="icon">📋</span> CLIPBOARD
+                    </button>
+                </nav>
+            </header>
 
-            <Explorer
-                currentPath={currentPath}
-                files={files}
-                selectedFiles={selectedFiles}
-                onUp={handleUp}
-                onNavigate={handleNavigate}
-                onToggleSelect={toggleSelect}
-            />
+            <div className="view-container">
+                <div className="main-panel">
+                    {mode === 'send' ? (
+                        <Explorer
+                            currentPath={currentPath}
+                            files={files}
+                            selectedFiles={selectedFiles}
+                            onUp={handleUp}
+                            onNavigate={handleNavigate}
+                            onToggleSelect={toggleSelect}
+                        />
+                    ) : (
+                        <div className="view-hero">
+                            <div className="hero-content">
+                                <h2>{mode === 'receive' ? 'RECEIVE FILES' : 'CLIPBOARD SYNC'}</h2>
+                                <p>
+                                    {mode === 'receive'
+                                        ? 'Set up your local dropzone to receive files from other devices on the same Wi-Fi.'
+                                        : 'Automatically sync your clipboard with other devices. Minimal effort, maximum speed.'}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-            <ConfigPanel
-                mode={mode} setMode={setMode}
-                connectivity={connectivity} setConnectivity={setConnectivity}
-                selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles}
-                saveLocation={saveLocation} setSaveLocation={setSaveLocation}
-                clipboardText={clipboardText} setClipboardText={setClipboardText}
-                password={password} setPassword={setPassword}
-                timeout={timeout} setTimeoutVal={setTimeoutVal}
-                port={port} setPort={setPort}
-                isServerRunning={isServerRunning}
-                onStartServer={handleStartServer}
-            />
+                <ConfigPanel
+                    mode={mode}
+                    selectedFiles={selectedFiles} setSelectedFiles={setSelectedFiles}
+                    saveLocation={saveLocation} setSaveLocation={setSaveLocation}
+                    clipboardText={clipboardText} setClipboardText={setClipboardText}
+                    password={password} setPassword={setPassword}
+                    timeout={timeout} setTimeoutVal={setTimeoutVal}
+                    port={port} setPort={setPort}
+                    isServerRunning={isServerRunning}
+                    onStartServer={handleStartServer}
+                />
+            </div>
 
             <ServerOverlay
                 isServerRunning={isServerRunning}
                 serverInfo={serverInfo}
                 mode={mode}
-                connectivity={connectivity}
+                connectivity="local"
                 logs={logs}
                 progress={progress}
                 onStop={handleStopServer}

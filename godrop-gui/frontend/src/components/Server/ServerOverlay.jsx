@@ -1,37 +1,55 @@
 import { RetroProgressBar } from '../Common/RetroProgressBar';
-import { StopServer } from '../../../wailsjs/go/main/App';
 
 export const ServerOverlay = ({
-    isServerRunning, serverInfo, mode, connectivity, logs, progress, onStop
+    isServerRunning, serverInfo, mode, logs, progress, onStop
 }) => {
     if (!isServerRunning || !serverInfo) return null;
 
     return (
         <div className="server-overlay">
-            <div className="server-card">
+            <div className="server-card vibrant-anim">
                 <div className="card-header">
-                    <span>{mode.toUpperCase()} ● LIVE</span>
-                    <span>{connectivity.toUpperCase()}</span>
+                    <span className="live-badge">● LIVE</span>
+                    <span className="mode-badge">{mode.toUpperCase()}</span>
                 </div>
+
                 <div className="card-body">
-                    <div className="qr-box">
-                        <img src={serverInfo.qrCode} className="qr-image" alt="QR" />
-                        <div className="url-box">{serverInfo.fullUrl}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '10px' }}>Scan to connect</div>
+                    <div className="qr-section">
+                        <div className="qr-frame">
+                            <img src={serverInfo.qrCode} className="qr-image" alt="QR" />
+                        </div>
+                        <div className="url-display">
+                            <code>{serverInfo.fullUrl}</code>
+                        </div>
+                        <p className="help-text">Scan with your phone to connect</p>
                     </div>
-                    <div className="log-box">
-                        {logs.map((log, i) => <div key={i}>{log}</div>)}
+
+                    <div className="console-section">
+                        <div className="console-header">SYSTEM LOGS</div>
+                        <div className="log-scroll">
+                            {logs.map((log, i) => (
+                                <div key={i} className="log-entry">{log}</div>
+                            ))}
+                        </div>
                     </div>
                 </div>
+
                 {progress && (
-                    <div className="progress-container">
+                    <div className="progress-section">
+                        <div className="progress-info">
+                            <span>TRANSFERRING...</span>
+                            <span>{progress.percent}%</span>
+                        </div>
                         <RetroProgressBar percent={progress.percent} />
-                        <div className="progress-text">
+                        <div className="progress-stats">
                             {Math.round(progress.transferred / 1024 / 1024 * 10) / 10} MB / {Math.round(progress.total / 1024 / 1024 * 10) / 10} MB
                         </div>
                     </div>
                 )}
-                <button className="btn-stop" onClick={onStop}>STOP SERVER</button>
+
+                <button className="btn-primary stop-btn" onClick={onStop}>
+                    STOP SERVER
+                </button>
             </div>
         </div>
     );
