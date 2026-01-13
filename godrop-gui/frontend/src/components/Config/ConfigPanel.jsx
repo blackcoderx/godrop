@@ -123,7 +123,7 @@ export const ConfigPanel = ({
             </div>
 
             <div className="dev-credit-container">
-                <span className="dev-credit">BUILT WITH <span className="dev-name">LOVE</span> BY <span className="dev-name">EMMANUEL ZIGGAH</span></span>
+                <span className="dev-credit">BUILT WITH <span className="dev-name">LOVE</span> BY <span className="dev-name"> <a href="https://github.com/blackcoderx" target="_blank">EMMANUEL ZIGGAH</a></span></span>
             </div>
         </aside>
     );
