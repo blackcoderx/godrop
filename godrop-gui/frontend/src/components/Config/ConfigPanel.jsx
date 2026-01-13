@@ -121,6 +121,10 @@ export const ConfigPanel = ({
                     {isServerRunning ? 'STOP SERVER' : 'START SERVER'}
                 </button>
             </div>
+
+            <div className="dev-credit-container">
+                <span className="dev-credit">BUILT WITH <span className="dev-name">LOVE</span> BY <span className="dev-name">EMMANUEL ZIGGAH</span></span>
+            </div>
         </aside>
     );
 };
