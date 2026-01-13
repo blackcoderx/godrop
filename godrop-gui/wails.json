@@ -9,5 +9,12 @@
   "author": {
     "name": "blackocoderx",
     "email": "ziggahemmanuel99@gmail.com"
+  },
+  "info": {
+    "companyName": "The Developer Foundry",
+    "productName": "GoDrop GUI",
+    "productVersion": "1.0.0",
+    "copyright": "© 2026 The Developer Foundry",
+    "comments": "The best file transfer app"
   }
 }
