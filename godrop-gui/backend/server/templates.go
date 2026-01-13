@@ -167,41 +167,95 @@ func GetReceiveTemplate() string {
 }
 
 // GetClipboardTemplate renders the Clipboard landing page
-func GetClipboardTemplate(currentText string) string {
-	// Replacing direct interpolation with a safe approach for scripts
-	safeText := strings.ReplaceAll(currentText, "`", "\\`")
+func GetClipboardTemplate(history []string) string {
+	var cardsHTML strings.Builder
+	for i, item := range history {
+		displayItem := item
+		if len(displayItem) > 200 {
+			displayItem = displayItem[:197] + "..."
+		}
+		// Escape backticks for JS
+		safeItem := strings.ReplaceAll(item, "`", "\\`")
+
+		cardsHTML.WriteString(fmt.Sprintf(`
+			<div class="clipboard-card" onclick="copyToPhone(`+"`"+`%s`+"`"+`, this)">
+				<div class="card-header">ITEM #%d</div>
+				<div class="card-content">%s</div>
+				<div class="card-action">CLICK TO COPY</div>
+			</div>
+		`, safeItem, len(history)-i, displayItem))
+	}
 
 	content := fmt.Sprintf(`
+		<style>
+			.clipboard-card {
+				background: #F0F0F0;
+				border: 2px solid var(--border);
+				border-radius: 15px;
+				padding: 15px;
+				margin-bottom: 15px;
+				text-align: left;
+				cursor: pointer;
+				transition: all 0.2s;
+				position: relative;
+				overflow: hidden;
+			}
+			.clipboard-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+			.card-header { font-size: 0.6rem; font-weight: 800; color: var(--text-muted); margin-bottom: 5px; }
+			.card-content { font-family: monospace; font-size: 0.85rem; word-break: break-all; max-height: 100px; overflow: hidden; }
+			.card-action { font-size: 0.6rem; font-weight: 800; color: var(--accent); margin-top: 8px; text-align: right; }
+			
+			.add-section { margin-bottom: 30px; }
+			textarea { font-family: monospace; width: 100%%; padding: 12px; border: 2px solid var(--border); border-radius: 12px; margin-bottom: 10px; }
+		</style>
 		<p>Real-time clipboard synchronization.</p>
-		<form action="/clipboard" method="POST" style="display:flex; flex-direction:column;">
-			<textarea name="text" id="txt" rows="10" placeholder="Type here...">%s</textarea>
-			<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
-				<button type="button" id="btn-copy" onclick="copyToPhone()" style="background:var(--accent);">COPY TO PHONE</button>
+		
+		<div class="add-section">
+			<form action="/clipboard" method="POST" style="display:flex; flex-direction:column;">
+				<textarea name="text" id="txt" rows="3" placeholder="Type here to add to history..."></textarea>
 				<button type="submit">SEND TO PC</button>
+			</form>
+		</div>
+
+		<div class="history-container">
+			<h3 style="font-size: 0.8rem; margin-bottom: 15px; text-align: left;">CLIPBOARD HISTORY</h3>
+			<div id="history-list">
+				%s
 			</div>
-		</form>
+		</div>
+
 		<script>
 			const txt = document.getElementById('txt');
-			const initialText = `+"`"+`%s`+"`"+`;
+			let lastItem = `+"`"+`%s`+"`"+`;
+			
 			setInterval(async () => {
 				if (document.activeElement === txt) return;
 				try {
-					const r = await fetch('/clipboard-data');
-					const data = await r.text();
-					if (data !== txt.value) {
-						txt.value = data;
+					const r = await fetch('/clipboard-history');
+					const history = await r.json();
+					if (history.length > 0 && history[0] !== lastItem) {
+						window.location.reload();
 					}
 				} catch(e) {}
-			}, 2000);
+			}, 3000);
 
-			function copyToPhone() {
-				navigator.clipboard.writeText(txt.value);
-				const btn = document.getElementById('btn-copy');
-				const old = btn.innerText;
-				btn.innerText = "COPIED!";
-				setTimeout(() => btn.innerText = old, 1500);
+			function copyToPhone(text, el) {
+				navigator.clipboard.writeText(text);
+				const action = el.querySelector('.card-action');
+				const old = action.innerText;
+				action.innerText = "COPIED!";
+				el.style.borderColor = "#FF5A5F";
+				setTimeout(() => {
+					action.innerText = old;
+					el.style.borderColor = "";
+				}, 1500);
 			}
 		</script>
-	`, currentText, safeText)
+	`, cardsHTML.String(), func() string {
+		if len(history) > 0 {
+			return strings.ReplaceAll(history[0], "`", "\\`")
+		}
+		return ""
+	}())
 	return baseLayout("Clipboard", content)
 }

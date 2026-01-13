@@ -6,6 +6,10 @@ export function GetDefaultSaveDir() {
   return window['go']['main']['App']['GetDefaultSaveDir']();
 }
 
+export function GetHistory() {
+  return window['go']['main']['App']['GetHistory']();
+}
+
 export function GetHomeDir() {
   return window['go']['main']['App']['GetHomeDir']();
 }

@@ -72,7 +72,7 @@ func StartSend(core *backend.Core, port string, password string, files []string,
 	}
 
 	mux := http.NewServeMux()
-	RegisterCommonHandlers(mux, core.GetSystemClipboard, core.SetSystemClipboard)
+	RegisterCommonHandlers(mux, core.GetSystemClipboard, core.SetSystemClipboard, core.GetHistory)
 
 	mux.HandleFunc("/api/info", func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{

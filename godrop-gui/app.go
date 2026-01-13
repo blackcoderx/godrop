@@ -21,6 +21,7 @@ func NewApp() *App {
 // startup is called when the app starts.
 func (a *App) startup(ctx context.Context) {
 	a.core.Ctx = ctx
+	go a.core.MonitorClipboard()
 }
 
 // --- FILE SYSTEM ---
@@ -49,6 +50,10 @@ func (a *App) GetSystemClipboard() string {
 
 func (a *App) SetSystemClipboard(text string) {
 	a.core.SetSystemClipboard(text)
+}
+
+func (a *App) GetHistory() []string {
+	return a.core.GetHistory()
 }
 
 // --- SERVERS ---

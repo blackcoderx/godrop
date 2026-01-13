@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import logo from './assets/images/godrop-logo.png';
-import { GetHomeDir, ReadDir, StartServer, StopServer, StartReceiveServer, StartClipboardServer, GetDefaultSaveDir, GetSystemClipboard } from '../wailsjs/go/main/App';
+import { GetHomeDir, ReadDir, StartServer, StopServer, StartReceiveServer, StartClipboardServer, GetDefaultSaveDir, GetSystemClipboard, GetHistory, SetSystemClipboard } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 
 // Components
 import { Explorer } from './components/Explorer/Explorer';
 import { ConfigPanel } from './components/Config/ConfigPanel';
 import { ServerOverlay } from './components/Server/ServerOverlay';
+import { ClipboardCard } from './components/Clipboard/ClipboardCard';
 
 function App() {
     // Explorer State
@@ -29,6 +30,7 @@ function App() {
     const [progress, setProgress] = useState(null);
     const [logs, setLogs] = useState([]);
     const [clipboardText, setClipboardText] = useState("");
+    const [clipboardHistory, setClipboardHistory] = useState([]);
     const [receivedFiles, setReceivedFiles] = useState([]);
 
     // Initial Load
@@ -38,6 +40,10 @@ function App() {
             loadDir(home);
             const defaultSave = await GetDefaultSaveDir();
             setSaveLocation(defaultSave);
+
+            // Initial clipboard history load
+            const history = await GetHistory();
+            setClipboardHistory(history);
         };
         init();
 
@@ -62,13 +68,21 @@ function App() {
             setReceivedFiles([]);
         };
         const onTransferProgress = (data) => setProgress(data);
+        const onClipboardChanged = (text) => {
+            setClipboardHistory(prev => {
+                if (prev[0] === text) return prev;
+                return [text, ...prev.slice(0, 49)];
+            });
+        };
+
 
         const events = {
             "download_started": onDownloadStarted,
             "file-received": onFileReceived,
             "server_error": onServerError,
             "server_stopped": onServerStopped,
-            "transfer-progress": onTransferProgress
+            "transfer-progress": onTransferProgress,
+            "clipboard-changed": onClipboardChanged
         };
 
         Object.entries(events).forEach(([name, fn]) => EventsOn(name, fn));
@@ -90,15 +104,8 @@ function App() {
         }
     }, [mode, saveLocation]);
 
-    // Clipboard Update Loop
-    useEffect(() => {
-        if (mode !== 'clipboard' || isServerRunning) return;
-        const interval = setInterval(async () => {
-            const text = await GetSystemClipboard();
-            setClipboardText(text);
-        }, 2000);
-        return () => clearInterval(interval);
-    }, [mode, isServerRunning]);
+    // Clipboard Update Loop removed as it is now event-driven from backend
+
 
     const loadDir = async (path) => {
         try {
@@ -230,10 +237,31 @@ function App() {
                             </div>
                         )
                     ) : (
-                        <div className="view-hero">
-                            <div className="hero-content">
-                                <h2>CLIPBOARD SYNC</h2>
-                                <p>Automatically sync your clipboard with other devices. Minimal effort, maximum speed.</p>
+                        <div className="clipboard-history-view">
+                            <div className="view-header">
+                                <h2>CLIPBOARD HISTORY</h2>
+                                <p>Items copied on this PC or sent from other devices appear here.</p>
+                            </div>
+                            <div className="clipboard-list">
+                                {clipboardHistory.length > 0 ? (
+                                    clipboardHistory.map((item, i) => (
+                                        <ClipboardCard
+                                            key={i}
+                                            item={item}
+                                            index={i}
+                                            total={clipboardHistory.length}
+                                            onCopy={async (text) => {
+                                                await SetSystemClipboard(text);
+                                                addLog("Copied to local clipboard");
+                                            }}
+                                        />
+                                    ))
+                                ) : (
+                                    <div className="empty-state">
+                                        <span className="empty-icon">📋</span>
+                                        <p>No history yet. Copy something!</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

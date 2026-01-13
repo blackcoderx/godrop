@@ -26,6 +26,8 @@ type Core struct {
 	DownloadLimit    int
 	CurrentDownloads int
 	ExpiryTime       time.Time
+	ClipboardHistory []string
+	ClipboardMutex   sync.Mutex
 }
 
 func NewCore() *Core {

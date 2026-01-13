@@ -736,3 +736,102 @@ body {
     color: var(--accent);
     letter-spacing: 1px;
 }
+/* --- CLIPBOARD HISTORY --- */
+.clipboard-history-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 30px;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.clipboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.clipboard-card {
+    background: white;
+    border: 2px solid var(--text-main);
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 4px 4px 0 var(--text-main);
+    transition: var(--transition);
+    cursor: pointer;
+    text-align: left;
+}
+
+.clipboard-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--text-main);
+    border-color: var(--accent);
+}
+
+.clipboard-card:active {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 var(--text-main);
+}
+
+.clipboard-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+}
+
+.item-id {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--accent);
+}
+
+.item-type {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: #f0f0f0;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.clipboard-card .card-body {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    word-break: break-all;
+    line-height: 1.5;
+}
+
+.clipboard-card .card-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.action-hint {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    gap: 15px;
+    opacity: 0.6;
+}
+
+.empty-icon {
+    font-size: 3rem;
+}

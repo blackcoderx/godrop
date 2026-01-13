@@ -20,7 +20,7 @@ func StartReceive(core *backend.Core, port string, saveDir string) (ServerRespon
 	}
 
 	mux := http.NewServeMux()
-	RegisterCommonHandlers(mux, core.GetSystemClipboard, core.SetSystemClipboard)
+	RegisterCommonHandlers(mux, core.GetSystemClipboard, core.SetSystemClipboard, core.GetHistory)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(GetReceiveTemplate()))

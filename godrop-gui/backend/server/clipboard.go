@@ -13,7 +13,7 @@ import (
 
 func StartClipboard(core *backend.Core, port string) (ServerResponse, error) {
 	mux := http.NewServeMux()
-	RegisterCommonHandlers(mux, core.GetSystemClipboard, core.SetSystemClipboard)
+	RegisterCommonHandlers(mux, core.GetSystemClipboard, core.SetSystemClipboard, core.GetHistory)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/clipboard", http.StatusSeeOther)

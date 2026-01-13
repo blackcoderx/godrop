@@ -5,6 +5,8 @@ import {server} from '../models';
 
 export function GetDefaultSaveDir():Promise<string>;
 
+export function GetHistory():Promise<Array<string>>;
+
 export function GetHomeDir():Promise<string>;
 
 export function GetSystemClipboard():Promise<string>;
